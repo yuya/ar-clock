@@ -132,7 +132,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
     <div class="tag bl" id="tagSrc">サンプル映像</div>
     <div class="start" id="start">
       <h2>AR CLOCK</h2>
-      <p>目の前の景色をマンガ調にして、10秒ごとに時刻を出す時計です。</p>
+      <p>目の前の景色にフィルタをかけ、10秒ごとに時刻を出す時計です。</p>
       <button type="button" id="camStart" class="primary">カメラを起動</button>
       <label class="btn" for="file">写真・動画を選ぶ</label>
       <button type="button" id="demoStart">サンプル映像で見る</button>
@@ -490,11 +490,12 @@ function pip(f, d, v){
   if (!A.ctx || A.ctx.state !== 'running') return;
   osc('sine', f, A.ctx.currentTime + .02, .005, d, v, false, A.chime);
 }
-function pong(){
+function pong(){   // 10秒の区切り：1kHzの平らな音を約1秒
   if (!A.ctx || A.ctx.state !== 'running') return;
-  const t = A.ctx.currentTime + .02;
-  osc('sine', 880, t, .005, 2.2, .5, false, A.chime);
-  osc('sine', 1760, t, .005, .6, .07, false, A.chime);
+  const c = A.ctx, t = c.currentTime + .02, o = c.createOscillator(), g = c.createGain();
+  o.frequency.value = 1000;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.2, t + .012); g.gain.setValueAtTime(.2, t + .88); g.gain.linearRampToValueAtTime(0, t + .95);
+  o.connect(g); g.connect(A.chime); o.start(t); o.stop(t + 1);
 }
 function beatPulse(){
   let ph;
@@ -931,7 +932,7 @@ function render(now){
 /* ───────────── 進行：映像10秒 → 時刻カード → 映像 ───────────── */
 const SC_LEN = 10, CARD_LEN = 4, WIPE = .55;
 const card = $('card');
-let sceneT0 = 0, cardT0 = null, opening = false, burst = 0, tap = 0, pal = 0, lines = 0, lastT = 0, hold = false;
+let sceneT0 = 0, cardOn = false, burst = 0, tap = 0, pal = 0, lines = 0, lastT = 0, hold = false;
 const p2 = n => (n < 10 ? '0' : '') + n, WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 let lastSec = -1, lastMin = -1, lastHour = -1, place = '';
 try{ place = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/').pop().replace(/_/g, ' ').toUpperCase(); }catch(e){}
@@ -948,21 +949,19 @@ function tickClock(){
     if (lastMin !== -1 && !reduce) burst = 1;
   }
   if (h !== lastHour){ if (lastHour !== -1) S.dirty = true; updateCaption(); }
-  if (state.chime){ if (m === 59 && s >= 57) pip(440, .12, .32); if (m === 0 && s === 0) pong(); }
+  // 10秒報：6・7・8・9秒に短い音、0秒に長い音（UNIQLOCKの動画の実測に合わせて 2kHz 0.05秒 / 1kHz 約1秒）
+  if (state.chime && running){ const k = s % 10; if (k === 0) pong(); else if (k >= 6) pip(2000, .05, .28); }
   lastMin = m; lastHour = h;
 }
 function frame(ms){
   requestAnimationFrame(frame);
   const now = ms / 1000, dt = Math.min(.1, now - lastT || .016); lastT = now;
   tickClock();
+  // 時計の秒に合わせる：毎分 0・10・20…秒に時刻カードが入り、6秒で出ていく
   if (running && !hold){
-    if (cardT0 !== null){
-      const a = now - cardT0;
-      if (!opening && a >= CARD_LEN - WIPE){ opening = true; card.classList.remove('in'); card.classList.add('out'); if (!reduce) burst = Math.max(burst, .8); }
-      if (a >= CARD_LEN + .05){ cardT0 = null; sceneT0 = now; pal++; card.classList.remove('out'); }
-    } else if (now - sceneT0 >= SC_LEN){
-      cardT0 = now; opening = false; card.classList.toggle('inv'); void card.offsetWidth; card.classList.add('in');
-    }
+    const want = (Date.now() % 10000) < 6000;
+    if (want && !cardOn){ cardOn = true; card.classList.remove('out'); card.classList.toggle('inv'); void card.offsetWidth; card.classList.add('in'); }
+    else if (!want && cardOn){ cardOn = false; pal++; card.classList.remove('in'); card.classList.add('out'); if (!reduce) burst = Math.max(burst, .8); }
   }
   burst *= Math.exp(-dt * 4); tap *= Math.exp(-dt * 4); lines *= Math.exp(-dt * 1.6);
   if (!gl) return;
