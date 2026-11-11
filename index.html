@@ -113,6 +113,12 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       <button type="button" id="demoStart">サンプル映像で見る</button>
       <p class="err" id="msg" role="status"></p>
     </div>
+    <div class="start" id="ask" hidden>
+      <h2>音が鳴ります</h2>
+      <p>BGMを流しますか。あとから「設定」でいつでも変えられます。</p>
+      <button type="button" id="soundYes" class="primary">流す</button>
+      <button type="button" id="soundNo">流さない</button>
+    </div>
   </main>
 </div>
 
@@ -455,7 +461,7 @@ $('close').addEventListener('click', () => openSheet(false));
 shade.addEventListener('click', () => openSheet(false));
 addEventListener('keydown', ev => { if (ev.key === 'Escape') openSheet(false); });
 elVol.value = state.vol;
-elPlay.addEventListener('click', () => { A.playing ? stop() : play(); });
+elPlay.addEventListener('click', () => { A.playing ? stop() : play(); store.set('sound', A.playing ? '1' : '0'); });
 elChime.addEventListener('click', () => {
   state.chime = !state.chime; store.set('chime', state.chime ? '1' : '0');
   if (state.chime && initAudio()) setTimeout(pong, 60);
@@ -507,13 +513,29 @@ function drawDemo(t){
   c.save(); c.translate(120, 150); c.rotate(t * .7); c.fillStyle = '#c9c4ba'; c.fillRect(-34, -34, 68, 68); c.fillStyle = '#222'; c.fillRect(-34, -6, 68, 12); c.restore();
 }
 function stopStream(){ if (stream){ stream.getTracks().forEach(tr => tr.stop()); stream = null; } }
+// 初回だけ「音を流すか」を聞く。答えは覚えておき、次からは聞かずにその通りにする
+const ask = $('ask');
+const prime = () => { if (store.get('sound', '') === '1') initAudio(); };   // タップの瞬間に音の準備だけ済ませる
+function startRun(sound){
+  ask.hidden = true;
+  if (!running){ running = true; sceneT0 = performance.now() / 1000; }
+  if (sound && !A.playing){
+    play();
+    if (!A.ctx || A.ctx.state !== 'running'){
+      const go = () => { removeEventListener('pointerdown', go); if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume(); if (!A.playing) play(); };
+      addEventListener('pointerdown', go);
+    }
+  }
+}
+$('soundYes').addEventListener('click', () => { store.set('sound', '1'); startRun(true); });
+$('soundNo').addEventListener('click', () => { store.set('sound', '0'); startRun(false); });
 function begin(){
   startBox.hidden = true; msg.textContent = '';
-  if (!running){ running = true; sceneT0 = performance.now() / 1000; }
+  if (!running){ const pref = store.get('sound', ''); if (pref === '') ask.hidden = false; else startRun(pref === '1'); }
   if (navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
   syncSrc();
 }
-function fail(text){ msg.textContent = text; startBox.hidden = false; src = { kind:'demo' }; syncSrc(); }
+function fail(text){ msg.textContent = text; startBox.hidden = false; ask.hidden = true; src = { kind:'demo' }; syncSrc(); }
 async function startCamera(){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ fail('このブラウザではカメラを使えません。写真・動画を選ぶと試せます。'); return; }
   stopStream();
@@ -551,8 +573,9 @@ fileIn.addEventListener('change', () => {
   }
   fileIn.value = '';
 });
-$('camStart').addEventListener('click', startCamera);
-$('demoStart').addEventListener('click', () => { src = { kind:'demo' }; begin(); });
+$('camStart').addEventListener('click', () => { prime(); startCamera(); });
+$('demoStart').addEventListener('click', () => { prime(); src = { kind:'demo' }; begin(); });
+document.querySelectorAll('label[for=file]').forEach(l => l.addEventListener('click', prime));
 $('segSrc').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; facing = b.dataset.v; startCamera(); });
 $('segFx').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; fx = b.dataset.v; store.set('fx', fx); burst = Math.max(burst, .7); syncSrc(); });
 function syncSrc(){
@@ -710,7 +733,7 @@ document.addEventListener('visibilitychange', () => {
   if (src.kind === 'camera' || src.kind === 'file') video.play().catch(() => {});
   if (running && navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
 });
-window.__ar = { set(mode, b, l){ fx = mode; hold = true; running = true; startBox.hidden = true; card.className = 'card'; syncSrc(); setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
+window.__ar = { set(mode, b, l){ fx = mode; hold = true; running = true; startBox.hidden = true; ask.hidden = true; card.className = 'card'; syncSrc(); setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
 
 if (!initGL()) msg.textContent = 'このブラウザではWebGLを使えないため、映像を表示できません。';
 syncUI(); syncSrc(); wake(); tickClock();
