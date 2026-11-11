@@ -99,6 +99,22 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
 .seg.two > *{flex:1 1 0}
 .note{margin:0; font-size:12px; font-weight:500; color:var(--mute); line-height:1.5}
 input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
+/* ガラス調のUI：半透明の面（ぼかし入り）の上に、半透明の操作部を重ねる */
+:root{ --glass:rgba(24,24,28,.5); --glass-2:rgba(255,255,255,.15); --glass-line:rgba(255,255,255,.24); --on:#fff }
+.sheet, .start, #menu, .toast{ background:var(--glass); color:var(--on); border:1px solid var(--glass-line);
+  -webkit-backdrop-filter:blur(18px) saturate(1.6); backdrop-filter:blur(18px) saturate(1.6); box-shadow:0 10px 40px rgba(0,0,0,.3) }
+.sheet{ border-width:1px 0 0; border-radius:28px 28px 0 0 }
+.sheet-head{ background:transparent; border-bottom:1px solid var(--glass-line) }
+.start{ border-radius:28px }
+#menu, .toast{ border-radius:999px }
+.sheet button, .sheet label.btn, .start button, .start label.btn{ background:var(--glass-2); color:var(--on); border:1px solid var(--glass-line); border-radius:16px }
+.sheet button[aria-pressed="true"], .start .primary{ background:rgba(255,255,255,.9); color:#111; border-color:transparent }
+.grp h3, .note, .lab{ background:transparent; padding:0; color:rgba(255,255,255,.82) }
+.slide{ background:var(--glass-2); border:1px solid var(--glass-line); border-radius:16px; color:var(--on) }
+.sheet input[type=range]{ accent-color:#fff }
+.sheet button:focus-visible, .start button:focus-visible, #menu:focus-visible, .sheet input:focus-visible{ outline-color:#fff }
+.seg.three{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) }
+.seg.three button{ padding:10px 4px; font-size:13px }
 @media (prefers-reduced-motion: reduce){ .card.in,.card.out,.sheet,.sheet.open,.shade,.shade.open,.toast{transition:none} }
 </style>
 
@@ -174,7 +190,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       <div class="seg">
         <button type="button" id="fxGlitch" aria-pressed="false">グリッチ OFF</button>
       </div>
-      <p class="note">OFFでも、映像をタップした瞬間だけグリッチが走ります。</p>
+      <p class="note">映像を2回タップすると、その場でグリッチが走ります。1回タップは一時停止です。</p>
     </div>
     <div class="grp">
       <h3>映像</h3>
@@ -186,13 +202,13 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
     </div>
     <div class="grp">
       <h3>音色</h3>
-      <div class="seg" id="segStyle">
+      <div class="seg three" id="segStyle">
         <button type="button" id="st-piano" data-v="piano">ピアノ</button>
         <button type="button" id="st-electro" data-v="electro">エレクトロ</button>
         <button type="button" id="st-musicbox" data-v="musicbox">オルゴール</button>
-        <button type="button" id="st-lofi" data-v="lofi">ローファイ</button>
-        <button type="button" id="st-chip" data-v="chip">8bit</button>
         <button type="button" id="st-birds" data-v="birds">鳥のさえずり</button>
+        <button type="button" id="st-chip" data-v="chip">8bit</button>
+        <button type="button" id="st-lofi" data-v="lofi">ローファイ</button>
       </div>
     </div>
     <div class="grp">
@@ -267,7 +283,7 @@ const A = { ctx:null, playing:false, timer:null };
 const S = { step:0, bar:0, next:0, P:null, motif:null, beatRef:0, dirty:true };
 
 function initAudio(){
-  if (A.ctx){ if (A.ctx.state === 'suspended') A.ctx.resume(); return true; }
+  if (A.ctx){ if (A.ctx.state !== 'running') A.ctx.resume().catch(() => {}); return true; }
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return false;
   const c = A.ctx = new AC();
@@ -539,8 +555,29 @@ elVol.addEventListener('input', () => {
   if (A.ctx) A.out.gain.setTargetAtTime(state.vol, A.ctx.currentTime, .03);
 });
 ['pointerdown', 'keydown'].forEach(n => addEventListener(n, wake, { passive:true }));
-addEventListener('pointerdown', () => { if (state.chime) initAudio(); }, { passive:true });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && A.ctx && A.ctx.state === 'suspended' && (A.playing || state.chime)) A.ctx.resume(); });
+
+/* ───────────── 音を鳴らし続ける ─────────────
+   ブラウザは「画面に触れた直後」にしか音を出せず、バックグラウンドから戻ったときに止めたままにすることもある。
+   そこで、戻ったら再開を試み、だめなら次に触れた瞬間に再開する。それでも動かなければ作り直す。 */
+try{ if (navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+const wantAudio = () => A.playing || (state.chime && !!A.ctx);
+const audioLocked = () => !!A.ctx && A.ctx.state !== 'running' && wantAudio();
+function rebuildAudio(){
+  const was = A.playing; clearInterval(A.timer); try{ A.ctx.close(); }catch(e){}
+  A.ctx = null; A.playing = false; A.stale = false;
+  if (was) play(); else initAudio();
+}
+function unlockAudio(){   // タップ・クリック・キー操作の中から呼ばれる
+  if (!A.ctx){ if (state.chime) initAudio(); return; }
+  if (A.ctx.state === 'running' || !wantAudio()) return;
+  A.unlockedAt = performance.now();
+  if (A.stale){ rebuildAudio(); return; }
+  const c = A.ctx; c.resume().catch(() => {});
+  setTimeout(() => { if (A.ctx === c && c.state !== 'running') A.stale = true; }, 600);
+}
+['touchend', 'click', 'keydown'].forEach(n => addEventListener(n, unlockAudio, true));
+const tryResume = () => { if (!document.hidden && A.ctx && A.ctx.state !== 'running' && wantAudio()) A.ctx.resume().catch(() => {}); };
+document.addEventListener('visibilitychange', tryResume); addEventListener('pageshow', tryResume); addEventListener('focus', tryResume);
 
 /* ───────────── 映像ソース：カメラ / 選んだ写真・動画 / サンプル映像 ───────────── */
 const stage = $('stage'), cv = $('gl'), video = $('vid'), startBox = $('start'), msg = $('msg'), fileIn = $('file');
@@ -579,18 +616,12 @@ const prime = () => { if (store.get('sound', '') === '1') initAudio(); };   // �
 function startRun(sound){
   ask.hidden = true;
   if (!running){ running = true; sceneT0 = performance.now() / 1000; }
-  if (sound && !A.playing){
-    play();
-    if (!A.ctx || A.ctx.state !== 'running'){
-      const go = () => { removeEventListener('pointerdown', go); if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume(); if (!A.playing) play(); };
-      addEventListener('pointerdown', go);
-    }
-  }
+  if (sound && !A.playing) play();   // まだ画面に触れていない場合は、次に触れた瞬間に鳴り始める
 }
 $('soundYes').addEventListener('click', () => { store.set('sound', '1'); startRun(true); });
 $('soundNo').addEventListener('click', () => { store.set('sound', '0'); startRun(false); });
 function begin(){
-  startBox.hidden = true; msg.textContent = '';
+  startBox.hidden = true; msg.textContent = ''; frozen = false;
   if (!running){ const pref = store.get('sound', ''); if (pref === '') ask.hidden = false; else startRun(pref === '1'); }
   if (navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
   syncSrc();
@@ -638,7 +669,8 @@ video.addEventListener('ended', () => { if (src.kind === 'file'){ video.currentT
 // 見張り：映像が止まっていたら再開する。バックグラウンド復帰でカメラが切れていたらつなぎ直す
 let lastCT = -1, stall = 0, camRetry = 0, restarting = false;
 function watchdog(){
-  if (document.hidden || restarting || (src.kind !== 'camera' && src.kind !== 'file')) { stall = 0; return; }
+  updateTag();
+  if (document.hidden || restarting || frozen || (src.kind !== 'camera' && src.kind !== 'file')) { stall = 0; return; }
   const ct = video.currentTime; stall = (video.paused || ct === lastCT) ? stall + 1 : 0; lastCT = ct;
   if (stall === 0) camRetry = 0;
   if (stall < 2) return;
@@ -654,11 +686,23 @@ $('demoStart').addEventListener('click', () => { prime(); src = { kind:'demo' };
 document.querySelectorAll('label[for=file]').forEach(l => l.addEventListener('click', prime));
 $('segSrc').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; facing = b.dataset.v; startCamera(); });
 // 見た目を変えたら手応えを返す：今の組み合わせを短く表示し、映像を一瞬だけ乱す
+function say(text){ toast.textContent = text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 1500); }
+// 左下の札：音が止められている / 一時停止中 / サンプル映像 のどれかを知らせる
+function updateTag(){
+  const el = $('tagSrc'), t = audioLocked() ? 'タップで音を再開' : frozen ? '一時停止中・タップで再開' : src.kind === 'demo' ? 'サンプル映像' : '';
+  if (el.textContent !== t) el.textContent = t; el.hidden = !t;
+}
+// 1回タップ＝その場面で止める（静止画にする）／もう1回で再開。2回タップ＝グリッチ
+let frozen = false, tapTimer = null;
+function setFrozen(f){
+  frozen = f;
+  if (src.kind === 'file'){ if (f) video.pause(); else video.play().catch(() => {}); }
+  say(f ? '一時停止' : '再開'); updateTag();
+}
 const toast = $('toast'), LOOK_NAME = { none:'', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート' };
 let toastTimer = null;
 function changed(pulse){
-  toast.textContent = [base === 'color' ? 'カラー' : 'モノクロ', LOOK_NAME[look], glitchOn ? 'グリッチ' : ''].filter(Boolean).join(' × ');
-  toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+  say([base === 'color' ? 'カラー' : 'モノクロ', LOOK_NAME[look], glitchOn ? 'グリッチ' : ''].filter(Boolean).join(' × '));
   if (pulse && !reduce) tap = .7;
   syncSrc();
 }
@@ -667,7 +711,7 @@ $('segLook').addEventListener('click', ev => { const b = ev.target.closest('butt
 $('fxGlitch').addEventListener('click', () => { glitchOn = !glitchOn; store.set('glitch', glitchOn ? '1' : '0'); if (glitchOn) burst = Math.max(burst, .9); changed(false); });
 
 function syncSrc(){
-  $('tagSrc').hidden = src.kind !== 'demo';
+  updateTag();
   document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', src.kind === 'camera' && b.dataset.v === facing ? 'true' : 'false'));
   document.querySelectorAll('#segBase button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === base ? 'true' : 'false'));
   document.querySelectorAll('#segLook button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === look ? 'true' : 'false'));
@@ -850,6 +894,7 @@ function layout(){
   }
 }
 function upload(t){
+  if (frozen) return;   // 一時停止中は最後のコマを持ち続ける
   let el = demo, w = 640, h = 360;
   if ((src.kind === 'camera' || src.kind === 'file') && video.readyState >= 2 && video.videoWidth){ el = video; w = video.videoWidth; h = video.videoHeight; }
   else if (src.kind === 'image'){ if (!stillDirty) return; stillDirty = false; el = still; w = still.width; h = still.height; }
@@ -923,12 +968,16 @@ function frame(ms){
   if (!gl) return;
   render(now);
 }
-cv.addEventListener('pointerdown', () => { burst = 1; tap = 1; });
+cv.addEventListener('click', () => {
+  if (performance.now() - (A.unlockedAt || -1e9) < 700){ say('音を再開しました'); return; }   // 止められていた音を戻すためのタップは、それだけに使う
+  if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; burst = 1; tap = 1; return; }
+  tapTimer = setTimeout(() => { tapTimer = null; setFrozen(!frozen); }, 270);
+});
 cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); gl = null; });
 cv.addEventListener('webglcontextrestored', () => { initGL(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
-  if (src.kind === 'camera' || src.kind === 'file') video.play().catch(() => {});
+  if ((src.kind === 'camera' || src.kind === 'file') && !frozen) video.play().catch(() => {});
   stall = 1; watchdog();
   if (running && navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
 });
