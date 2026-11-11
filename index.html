@@ -147,11 +147,8 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
   </main>
 </div>
 
-<div class="card" id="card">
-  <div class="time" id="ctime">-- -- --</div>
-  <div class="sub" id="csub"></div>
-  <div class="sub dimmed" id="cmood"></div>
-</div>
+<div class="card" id="cardA"><div class="time ctime">-- -- --</div><div class="sub csub"></div><div class="sub dimmed cmood"></div></div>
+<div class="card" id="cardB"><div class="time ctime">-- -- --</div><div class="sub csub"></div><div class="sub dimmed cmood"></div></div>
 
 <button type="button" id="menu" aria-expanded="false" aria-controls="sheet">設定</button>
 <div class="toast" id="toast" role="status"></div>
@@ -286,7 +283,7 @@ function initAudio(){
   if (A.ctx){ if (A.ctx.state !== 'running') A.ctx.resume().catch(() => {}); return true; }
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return false;
-  const c = A.ctx = new AC();
+  const c = A.ctx = new AC(); OFF.length = 0;
   A.out = c.createGain(); A.out.gain.value = state.vol;
   A.comp = c.createDynamicsCompressor(); A.comp.threshold.value = -14; A.comp.ratio.value = 4;
   A.comp.connect(A.out); A.out.connect(c.destination);
@@ -383,7 +380,7 @@ function mutateMotif(){
 }
 function params(){
   const mood = currentMood(), M = MOODS[mood];
-  return { mood, style:state.style, key:M.key, bpm:Math.round(M.bpm * STYLES[state.style].tempo),
+  return { mood, style:state.style, key:M.key, bpm:qbpm(mood),
     cut:M.cut, drums:M.drums, oct:M.oct, send:M.send, prog:M.prog };
 }
 function applyParams(t){
@@ -403,6 +400,11 @@ function scheduleStep(s, t){
   const ci = S.bar % 4 === 3 ? M.c[7 - h] : M.c[h];
   const mel = i => P.key + P.oct + PENTA[i];
   const D = P.drums;
+  // 時報：秒の頭に来る刻みで鳴らす。高さは今の和音に合わせる（長い音＝根音、短い音＝5度）ので曲とぶつからない
+  if (state.chime && running && S.abs % (P.bpm / 15) === 0){
+    if (Math.round(S.abs / (P.bpm / 15)) % 10 === 0){ let pm = root; while (pm < 77) pm += 12; while (pm > 88) pm -= 12; pong(mf(pm), t); }
+    else { let qm = root + 7; while (qm < 89) qm += 12; while (qm > 100) qm -= 12; pip(mf(qm), .05, .2, t); }
+  }
 
   if (P.style === 'piano'){
     if (s === 0) bass(b, t, .26, .5);
@@ -457,13 +459,30 @@ function scheduleStep(s, t){
     if (Math.random() < .25) noise(t + Math.random() * sd, .01, .02, 'highpass', 5000);
   }
 }
+// テンポは15の倍数に丸める。こうすると1秒が16分音符のちょうど整数個になり、毎秒の「ポッ」が必ず拍の刻みに乗る
+const qbpm = mood => Math.max(60, Math.round(MOODS[mood].bpm * STYLES[state.style].tempo / 15) * 15);
+// 16分の刻みを時計の秒にそろえる。S.abs は「時計の時刻×(1秒あたりの刻み数)」で、16で割った余りが小節内の位置
+// 音の時計と壁時計の差。音の時計は塊で進むので1回の測定はぶれる。直近1秒ほどの測定の最大値を使うと安定する
+const OFF = [];
+function sampleOff(){
+  const c = A.ctx; let v = c.currentTime - Date.now() / 1000;
+  try{ const ts = c.getOutputTimestamp && c.getOutputTimestamp(); if (ts && ts.contextTime > 0) v = Math.max(v, ts.contextTime - (performance.timeOrigin + ts.performanceTime) / 1000); }catch(e){}
+  OFF.push(v); if (OFF.length > 40) OFF.shift();
+}
+function wallToCtx(w){ const c = A.ctx; if (!OFF.length) sampleOff(); return w + Math.max.apply(null, OFF) - (c.outputLatency || c.baseLatency || 0); }
+function align(){
+  const k = S.P.bpm / 15, n = Math.ceil((Date.now() / 1000 + .07) * k);
+  S.abs = n; S.next = wallToCtx(n / k); S.step = n % 16; S.bar = Math.floor(n / 16); S.beatRef = S.next - (n % 4) / k;
+}
 function tick(){
   const c = A.ctx; if (!c || !A.playing) return;
-  if (S.next < c.currentTime) S.next = c.currentTime + .06;
+  sampleOff();
+  if (!S.P || S.dirty){ applyParams(c.currentTime); align(); }
+  const k = S.P.bpm / 15;
+  if (S.next < c.currentTime || Math.abs(S.next - wallToCtx(S.abs / k)) > .06) align();   // 遅れや時計のずれを直す
   while (S.next < c.currentTime + .18){
-    if (S.dirty && S.step % 4 === 0){ S.step = 0; applyParams(S.next); }
     scheduleStep(S.step, S.next);
-    S.next += 60 / S.P.bpm / 4;
+    S.next += 1 / k; S.abs++;
     if (++S.step === 16){
       S.step = 0; S.bar++;
       if (S.bar % 8 === 0){ if (Math.random() < .5) mutateMotif(); else newMotif(); }
@@ -486,14 +505,14 @@ function stop(){
   if (A.wake){ try{ A.wake.release(); }catch(e){} A.wake = null; }
   syncUI();
 }
-function pip(f, d, v){
+function pip(f, d, v, at){
   if (!A.ctx || A.ctx.state !== 'running') return;
-  osc('sine', f, A.ctx.currentTime + .02, .005, d, v, false, A.chime);
+  osc('sine', f, at || A.ctx.currentTime + .02, .005, d, v, false, A.chime);
 }
-function pong(){   // 10秒の区切り：1kHzの平らな音を約1秒
+function pong(f, at){   // 10秒の区切り：平らな音を約1秒（曲が鳴っていないときは1kHz）
   if (!A.ctx || A.ctx.state !== 'running') return;
-  const c = A.ctx, t = c.currentTime + .02, o = c.createOscillator(), g = c.createGain();
-  o.frequency.value = 1000;
+  const c = A.ctx, t = at || c.currentTime + .02, o = c.createOscillator(), g = c.createGain();
+  o.frequency.value = f || 1000;
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.2, t + .012); g.gain.setValueAtTime(.2, t + .88); g.gain.linearRampToValueAtTime(0, t + .95);
   o.connect(g); g.connect(A.chime); o.start(t); o.stop(t + 1);
 }
@@ -509,8 +528,8 @@ function beatPulse(){
 const sheet = $('sheet'), shade = $('shade'), elMenu = $('menu'), elPlay = $('play'), elChime = $('chime'), elVol = $('vol');
 function updateCaption(){
   const mood = currentMood(), M = MOODS[mood];
-  const bpm = Math.round(M.bpm * STYLES[state.style].tempo);
-  $('cmood').textContent = A.playing ? M.label + ' · ' + bpm + ' BPM' : M.label;
+  const text = A.playing ? M.label + ' · ' + qbpm(mood) + ' BPM' : M.label;
+  document.querySelectorAll('.cmood').forEach(el => { el.textContent = text; });
 }
 function syncUI(){
   elPlay.textContent = A.playing ? '■ 音を止める' : '▶ 音を鳴らす';
@@ -538,7 +557,7 @@ elVol.value = state.vol;
 elPlay.addEventListener('click', () => { A.playing ? stop() : play(); store.set('sound', A.playing ? '1' : '0'); });
 elChime.addEventListener('click', () => {
   state.chime = !state.chime; store.set('chime', state.chime ? '1' : '0');
-  if (state.chime && initAudio()) setTimeout(pong, 60);
+  if (state.chime && initAudio()) setTimeout(() => pong(), 60);
   syncUI();
 });
 $('segStyle').addEventListener('click', ev => {
@@ -931,7 +950,28 @@ function render(now){
 
 /* ───────────── 進行：映像10秒 → 時刻カード → 映像 ───────────── */
 const SC_LEN = 10, CARD_LEN = 4, WIPE = .55;
-const card = $('card');
+// 時刻カードは2枚を交互に使い、1秒ごとに新しい1枚が上下左右のどこかから入ってくる
+const cards = [$('cardA'), $('cardB')], EASE = 'cubic-bezier(.7,0,.2,1)';
+const HIDE = { l:'inset(0 100% 0 0)', r:'inset(0 0 0 100%)', t:'inset(0 0 100% 0)', b:'inset(100% 0 0 0)' }, SIDES = ['l', 'r', 't', 'b'];
+let top = 0, inv = false, lastSide = '';
+const side = () => { let s; do { s = SIDES[Math.random() * 4 | 0]; } while (s === lastSide); lastSide = s; return s; };
+function clip(el, v, anim){
+  el.style.transition = anim && !reduce ? 'clip-path .42s ' + EASE + ', -webkit-clip-path .42s ' + EASE : 'none';
+  el.style.webkitClipPath = v; el.style.clipPath = v;
+}
+function cardIn(text){
+  const prev = cards[top]; top = 1 - top; inv = !inv; const el = cards[top];
+  el.querySelector('.ctime').textContent = text; el.classList.toggle('inv', inv);
+  prev.style.zIndex = 3; el.style.zIndex = 4;
+  clip(el, HIDE[side()], false); void el.offsetWidth; clip(el, 'inset(0 0 0 0)', true);
+  cardOn = true;
+}
+function cardOut(){
+  if (!cardOn) return; cardOn = false;
+  clip(cards[1 - top], HIDE.l, false); clip(cards[top], HIDE[side()], true);
+  pal++; if (!reduce) burst = Math.max(burst, .8);
+}
+function cardsOff(){ cards.forEach(el => clip(el, HIDE.l, false)); cardOn = false; }
 let sceneT0 = 0, cardOn = false, burst = 0, tap = 0, pal = 0, lines = 0, lastT = 0, hold = false;
 const p2 = n => (n < 10 ? '0' : '') + n, WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 let lastSec = -1, lastMin = -1, lastHour = -1, place = '';
@@ -940,29 +980,24 @@ if (place) $('tagPlace').textContent = place;
 function tickClock(){
   const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
   lastSec = s; const m = d.getMinutes(), h = d.getHours();
-  $('ctime').textContent = p2(h) + ' ' + p2(m) + ' ' + p2(s);
+  // UNIQLOCKと同じ割り：0秒の長い音のあと、1〜5秒は毎秒1枚ずつ時刻カード、6秒から次の1秒までは映像
+  if (running && !hold){ const k = s % 10; if (k >= 1 && k <= 5) cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s)); else if (k === 6) cardOut(); }
   if (!reduce && glitchOn) burst = Math.max(burst, .3);
   if (m !== lastMin){
     const ds = d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + WD[d.getDay()];
-    $('csub').textContent = (place ? place + ' / ' : '') + ds; $('tagDate').textContent = ds;
+    document.querySelectorAll('.csub').forEach(el => { el.textContent = (place ? place + ' / ' : '') + ds; }); $('tagDate').textContent = ds;
     $('srtime').textContent = 'AR Clock ' + h + '時' + m + '分';
     if (lastMin !== -1 && !reduce) burst = 1;
   }
   if (h !== lastHour){ if (lastHour !== -1) S.dirty = true; updateCaption(); }
-  // 10秒報：6・7・8・9秒に短い音、0秒に長い音（UNIQLOCKの動画の実測に合わせて 2kHz 0.05秒 / 1kHz 約1秒）
-  if (state.chime && running){ const k = s % 10; if (k === 0) pong(); else if (k >= 6) pip(2000, .05, .28); }
+  // 時報：毎秒短い音、0・10・20…秒に長い音。BGMが鳴っている間は、拍と和音に合わせて音の側で鳴らす
+  if (state.chime && running && !(A.playing && A.ctx && A.ctx.state === 'running')){ if (s % 10 === 0) pong(); else pip(2000, .05, .28); }
   lastMin = m; lastHour = h;
 }
 function frame(ms){
   requestAnimationFrame(frame);
   const now = ms / 1000, dt = Math.min(.1, now - lastT || .016); lastT = now;
   tickClock();
-  // 時計の秒に合わせる：毎分 0・10・20…秒に時刻カードが入り、6秒で出ていく
-  if (running && !hold){
-    const want = (Date.now() % 10000) < 6000;
-    if (want && !cardOn){ cardOn = true; card.classList.remove('out'); card.classList.toggle('inv'); void card.offsetWidth; card.classList.add('in'); }
-    else if (!want && cardOn){ cardOn = false; pal++; card.classList.remove('in'); card.classList.add('out'); if (!reduce) burst = Math.max(burst, .8); }
-  }
   burst *= Math.exp(-dt * 4); tap *= Math.exp(-dt * 4); lines *= Math.exp(-dt * 1.6);
   if (!gl) return;
   render(now);
@@ -980,7 +1015,7 @@ document.addEventListener('visibilitychange', () => {
   stall = 1; watchdog();
   if (running && navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
 });
-window.__ar = { set(b0, l0, g0, b, l, p){ base = b0; look = l0; glitchOn = !!g0; pal = p || 0; hold = true; running = true; startBox.hidden = true; ask.hidden = true; card.className = 'card'; syncSrc(); clearInterval(window.__iv); window.__iv = setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
+window.__ar = { set(b0, l0, g0, b, l, p){ base = b0; look = l0; glitchOn = !!g0; pal = p || 0; hold = true; running = true; startBox.hidden = true; ask.hidden = true; cardsOff(); syncSrc(); clearInterval(window.__iv); window.__iv = setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
 
 if (!initGL()) msg.textContent = 'このブラウザではWebGLを使えないため、映像を表示できません。';
 syncUI(); syncSrc(); wake(); tickClock();
