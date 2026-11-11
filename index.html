@@ -141,17 +141,27 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       </div>
     </div>
     <div class="grp">
-      <h3>フィルタ</h3>
-      <div class="seg" id="segFx">
-        <button type="button" id="fx-manga" data-v="manga">マンガ</button>
-        <button type="button" id="fx-both" data-v="both">マンガ＋グリッチ</button>
-        <button type="button" id="fx-glitch" data-v="glitch">グリッチ</button>
-        <button type="button" id="fx-mono" data-v="mono">モノクロ</button>
-        <button type="button" id="fx-pop" data-v="pop">ポップアート</button>
-        <button type="button" id="fx-film" data-v="film">フィルム調</button>
-        <button type="button" id="fx-none" data-v="none">フィルタなし</button>
+      <h3>ベース</h3>
+      <div class="seg two" id="segBase">
+        <button type="button" id="base-color" data-v="color">カラー</button>
+        <button type="button" id="base-mono" data-v="mono">モノクロ</button>
       </div>
-      <p class="note">映像をタップすると、その場でグリッチが走ります。</p>
+    </div>
+    <div class="grp">
+      <h3>フィルタ</h3>
+      <div class="seg" id="segLook">
+        <button type="button" id="look-none" data-v="none">なし</button>
+        <button type="button" id="look-manga" data-v="manga">マンガ</button>
+        <button type="button" id="look-film" data-v="film">フィルム調</button>
+        <button type="button" id="look-pop" data-v="pop">ポップアート</button>
+      </div>
+    </div>
+    <div class="grp">
+      <h3>エフェクト</h3>
+      <div class="seg">
+        <button type="button" id="fxGlitch" aria-pressed="false">グリッチ OFF</button>
+      </div>
+      <p class="note">OFFでも、映像をタップした瞬間だけグリッチが走ります。</p>
     </div>
     <div class="grp">
       <h3>映像</h3>
@@ -494,7 +504,10 @@ const demo = document.createElement('canvas'); demo.width = 640; demo.height = 3
 const DX = demo.getContext('2d'), still = document.createElement('canvas');
 let src = { kind:'demo' }, stream = null, stillDirty = false, running = false, wakeLock = null;
 let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environment';
-let fx = store.get('fx', 'manga'); if (!['manga', 'both', 'glitch', 'mono', 'pop', 'film', 'none'].includes(fx)) fx = 'manga';
+// 見た目は3つの組み合わせ：ベース（カラー/モノクロ）× フィルタ × グリッチ。以前の単一フィルタ設定は読み替える
+const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:['mono', 'none', '1'], mono:['mono', 'none', '0'], pop:['color', 'pop', '0'], film:['color', 'film', '0'], none:['color', 'none', '0'] }[store.get('fx', '')] || ['mono', 'manga', '0'];
+let base = store.get('base', OLD[0]) === 'color' ? 'color' : 'mono', look = store.get('look', OLD[1]), glitchOn = store.get('glitch', OLD[2]) === '1';
+if (!['none', 'manga', 'film', 'pop'].includes(look)) look = 'manga';
 
 function drawDemo(t){
   const c = DX, g = c.createLinearGradient(0, 0, 0, 360);
@@ -580,35 +593,61 @@ $('camStart').addEventListener('click', () => { prime(); startCamera(); });
 $('demoStart').addEventListener('click', () => { prime(); src = { kind:'demo' }; begin(); });
 document.querySelectorAll('label[for=file]').forEach(l => l.addEventListener('click', prime));
 $('segSrc').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; facing = b.dataset.v; startCamera(); });
-$('segFx').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; fx = b.dataset.v; store.set('fx', fx); burst = Math.max(burst, .7); syncSrc(); });
+$('segBase').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; base = b.dataset.v; store.set('base', base); syncSrc(); });
+$('segLook').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; look = b.dataset.v; store.set('look', look); syncSrc(); });
+$('fxGlitch').addEventListener('click', () => { glitchOn = !glitchOn; store.set('glitch', glitchOn ? '1' : '0'); if (glitchOn) burst = Math.max(burst, .7); syncSrc(); });
 function syncSrc(){
   $('tagSrc').hidden = src.kind !== 'demo';
   document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', src.kind === 'camera' && b.dataset.v === facing ? 'true' : 'false'));
-  document.querySelectorAll('#segFx button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === fx ? 'true' : 'false'));
+  document.querySelectorAll('#segBase button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === base ? 'true' : 'false'));
+  document.querySelectorAll('#segLook button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === look ? 'true' : 'false'));
+  $('fxGlitch').setAttribute('aria-pressed', glitchOn ? 'true' : 'false'); $('fxGlitch').textContent = glitchOn ? 'グリッチ ON' : 'グリッチ OFF';
 }
 
-/* ───────────── WebGL フィルタ：マンガ調（網点＋輪郭線）とグリッチ ───────────── */
+/* ───────────── WebGL：ベース（カラー/モノクロ）× フィルタ（マンガ/フィルム/ポップ）× グリッチ ─────────────
+   線画は3段で作る。①輝度を横にぼかす ②縦にぼかして「細いぼかし−太いぼかし」の差を取る ③その差が負の所だけを細い線として描く。
+   こうすると輪郭の暗い側に1〜2pxの線だけが残り、面は白く抜ける。 */
 const VS = 'attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0.,1.);}';
-const FS = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n' + `
-uniform sampler2D u_tex; uniform vec2 u_res,u_src; uniform float u_t,u_dpr,u_manga,u_glitch,u_burst,u_lines,u_mirror,u_style,u_grain;
-uniform vec3 u_paper,u_ink,u_p0,u_p1,u_p2,u_p3;
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+const PREC = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n';
+const COVER = `
+uniform sampler2D u_tex; uniform vec2 u_src; uniform float u_asp,u_mirror;
 vec2 cover(vec2 uv){
-  float ra=u_res.x/u_res.y, rs=u_src.x/u_src.y;
-  vec2 s=ra>rs?vec2(1.,rs/ra):vec2(ra/rs,1.);
+  float rs=u_src.x/u_src.y;
+  vec2 s=u_asp>rs?vec2(1.,rs/u_asp):vec2(u_asp/rs,1.);
   uv=(uv-.5)*s+.5;
   if(u_mirror>.5) uv.x=1.-uv.x;
   return uv;
 }
-float lum(vec2 uv){return dot(texture2D(u_tex,cover(uv)).rgb,vec3(.299,.587,.114));}
-float sobel(vec2 uv){
-  vec2 e=1.5*u_dpr/u_res;
-  float tl=lum(uv+vec2(-e.x,e.y)), tc=lum(uv+vec2(0.,e.y)), tr=lum(uv+e);
-  float ml=lum(uv+vec2(-e.x,0.)), mr=lum(uv+vec2(e.x,0.));
-  float bl=lum(uv-e), bc=lum(uv+vec2(0.,-e.y)), br=lum(uv+vec2(e.x,-e.y));
-  float gx=-tl-2.*ml-bl+tr+2.*mr+br, gy=-tl-2.*tc-tr+bl+2.*bc+br;
-  return smoothstep(.2,.52,length(vec2(gx,gy)));
-}
+float L(vec3 c){return dot(c,vec3(.299,.587,.114));}`;
+const FS_H = PREC + COVER + `
+uniform vec2 u_wres;
+vec2 pack(float v){v=clamp(v,0.,.9999)*255.;return vec2(floor(v)/255.,fract(v));}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_wres; float a=0.,b=0.,wa=0.,wb=0.;
+  for(int i=-4;i<=4;i++){
+    float x=float(i), l=L(texture2D(u_tex,cover(uv+vec2(x/u_wres.x,0.))).rgb);
+    float w1=exp(-x*x/1.62), w2=exp(-x*x/5.12);
+    a+=l*w1; wa+=w1; b+=l*w2; wb+=w2;
+  }
+  gl_FragColor=vec4(pack(a/wa),pack(b/wb));
+}`;
+const FS_V = PREC + `
+uniform sampler2D u_a; uniform vec2 u_wres;
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_wres; float a=0.,b=0.,wa=0.,wb=0.;
+  for(int i=-4;i<=4;i++){
+    float x=float(i); vec4 t=texture2D(u_a,uv+vec2(0.,x/u_wres.y));
+    float w1=exp(-x*x/1.62), w2=exp(-x*x/5.12);
+    a+=(t.r+t.g/255.)*w1; wa+=w1; b+=(t.b+t.a/255.)*w2; wb+=w2;
+  }
+  a/=wa; b/=wb;
+  gl_FragColor=vec4(clamp(.5+(a-b)*12.,0.,1.),b,a,1.);
+}`;
+const FS_F = PREC + COVER + `
+uniform sampler2D u_fx; uniform vec2 u_res;
+uniform float u_t,u_dpr,u_mono,u_look,u_glitch,u_burst,u_lines,u_grain;
+uniform vec3 u_paper,u_ink,u_p0,u_p1,u_p2,u_p3;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 vec2 dotCell(vec2 px,float cs){return fract(mat2(.7071,.7071,-.7071,.7071)*px/cs)-.5;}
 void main(){
   vec2 uv=gl_FragCoord.xy/u_res, px=gl_FragCoord.xy/u_dpr, uv0=uv;
@@ -621,49 +660,56 @@ void main(){
     uv.x+=sin(uv.y*90.+u_t*30.)*.0012*(1.+b*6.);
   }
   float sh=g*(.004+b*.03)*(.7+.3*sin(u_t*3.));
+  vec3 cg=texture2D(u_tex,cover(uv)).rgb, cr=cg, cb=cg;
+  if(sh>0.){ cr=texture2D(u_tex,cover(uv+vec2(sh,0.))).rgb; cb=texture2D(u_tex,cover(uv-vec2(sh,0.))).rgb; }
+  bool mono=u_mono>.5;
+  vec3 c=mono?vec3(L(cr),L(cg),L(cb)):vec3(cr.r,cg.g,cb.b);
+  float l=L(cg);
   vec3 col;
-  if(u_style<.5){
-    // 白黒系：マンガ / グリッチ / モノクロ
-    float lr=lum(uv+vec2(sh,0.)), lg=lum(uv), lb=lum(uv-vec2(sh,0.));
-    if(u_manga>.5){
-      float edge=sobel(uv);
-      float dark=1.-smoothstep(.08,.92,lg);
-      float cs=5.; vec2 f=dotCell(px,cs);
-      float r=sqrt(clamp((dark-.3)/.46,0.,1.))*.64, aa=.8/(cs*u_dpr);
-      float dots=smoothstep(r+aa,r-aa,length(f))*step(.02,r);
-      float ink=max(max(dots,smoothstep(.74,.82,dark)),edge);
-      col=mix(u_paper,u_ink,ink);
-      float d=(lr-lb)*g; col+=vec3(d,-abs(d)*.3,-d)*1.4;
+  if(u_look<.5){
+    col=mono?mix(u_ink,u_paper,smoothstep(vec3(.04),vec3(.96),c)):c;
+  } else if(u_look<1.5 || u_look>2.5){
+    vec3 fxv=texture2D(u_fx,uv).rgb;
+    float dog=(fxv.r-.5)/12., tone=fxv.g;
+    // 細いペン線：コントラストの弱い所ほど薄く、暗部では少し太らせる
+    float line=smoothstep(.0028,.0105,-dog-.0012*tone);
+    if(u_look<1.5){
+      // マンガ：白地に線、ごく暗い所だけベタ、その手前は細かいトーン
+      float solid=1.-smoothstep(.085,.15,tone);
+      float cs=2.4; vec2 f=dotCell(px,cs); float aa=.9/(cs*u_dpr);
+      float r=sqrt(clamp((.34-tone)/.22,0.,1.))*.58;
+      float dots=smoothstep(r+aa,r-aa,length(f))*step(.06,r);
+      if(mono){
+        col=mix(u_paper,u_ink,max(max(line,solid),dots));
+        float d=(c.r-c.b)*g; col+=vec3(d,-abs(d)*.3,-d)*1.4;
+      } else {
+        vec3 wash=mix(vec3(L(c)),c,1.12)*.8+.2;
+        col=mix(wash,u_ink,max(line,solid*.92));
+      }
     } else {
-      col=smoothstep(vec3(.04),vec3(.96),vec3(lr,lg,lb));
-      col=mix(u_ink,u_paper,col);
-      col*=1.-g*.12*(.5+.5*sin(px.y*3.1416));
+      // ポップアート：明るさを4色に分け、境目だけ細かい網点でつなぐ
+      float x=smoothstep(.07,.93,mono?l:L(c))*3., bandI=floor(min(x,2.999)), fr=x-bandI;
+      vec3 lo=bandI<.5?u_p0:(bandI<1.5?u_p1:u_p2), hi=bandI<.5?u_p1:(bandI<1.5?u_p2:u_p3);
+      float cs=3.6; vec2 f=dotCell(px,cs); float aa=.9/(cs*u_dpr);
+      float r=sqrt(smoothstep(.3,1.,fr))*.66;
+      col=mix(lo,hi,smoothstep(r+aa,r-aa,length(f))*step(.04,r));
+      col=mix(col,u_ink,line);
     }
   } else {
-    vec3 c=vec3(texture2D(u_tex,cover(uv+vec2(sh,0.))).r, texture2D(u_tex,cover(uv)).g, texture2D(u_tex,cover(uv-vec2(sh,0.))).b);
-    float l=dot(c,vec3(.299,.587,.114));
-    if(u_style<1.5){
-      // ポップアート：明るさを4色に分け、境目を網点でつなぎ、輪郭を黒で締める
-      float x=smoothstep(.07,.93,l)*3.; float bandI=floor(min(x,2.999)), fr=x-bandI;
-      vec3 lo=bandI<.5?u_p0:(bandI<1.5?u_p1:u_p2), hi=bandI<.5?u_p1:(bandI<1.5?u_p2:u_p3);
-      float cs=6.5; vec2 f=dotCell(px,cs);
-      float r=sqrt(fr)*.66, aa=.8/(cs*u_dpr);
-      col=mix(lo,hi,smoothstep(r+aa,r-aa,length(f))*step(.03,r));
-      col=mix(col,u_ink,sobel(uv));
-    } else if(u_style<2.5){
-      col=c;
+    // フィルム調：浅めの黒、周辺減光。カラーは彩度控えめで影を青緑・明部を暖色に、モノクロは硬めの階調
+    if(mono){
+      c=smoothstep(vec3(.02),vec3(.98),c); c=mix(c,c*c*(3.-2.*c),.55);
+      c=c*vec3(1.,.985,.955)*.94+.035;
     } else {
-      // フィルム調：浅めの黒、控えめな彩度、影は青緑・明部は暖色、周辺減光
       c=mix(c,smoothstep(vec3(0.),vec3(1.),c),.38);
-      l=dot(c,vec3(.299,.587,.114));
-      c=mix(vec3(l),c,.8);
-      c+=vec3(-.012,.022,.034)*(1.-l)*(1.-l);
-      c+=vec3(.045,.018,-.04)*l*l;
+      float l2=L(c); c=mix(vec3(l2),c,.8);
+      c+=vec3(-.012,.022,.034)*(1.-l2)*(1.-l2);
+      c+=vec3(.045,.018,-.04)*l2*l2;
       c.r=pow(max(c.r,0.),.96); c.b=pow(max(c.b,0.),1.05);
       c=c*.93+.04;
-      vec2 v=uv0-.5; c*=1.-.42*dot(v,v);
-      col=c;
     }
+    vec2 v=uv0-.5; c*=1.-.42*dot(v,v);
+    col=c;
   }
   if(g>0. && hash(vec2(floor(uv.y*9.),tt+11.))>1.-b*.16) col=1.-col;
   if(u_lines>.001){
@@ -673,33 +719,44 @@ void main(){
     col=mix(col,u_ink,step(w,.1+.3*h*h)*smoothstep(R,R+60.,length(c2))*step(.35,h)*min(u_lines*2.,1.));
   }
   float gr=hash(px+fract(u_t)*91.)-.5;
-  col+=gr*u_grain*(u_style>2.5?(1.2-dot(col,vec3(.333))*.6):1.);
+  col+=gr*u_grain*(u_look>1.5&&u_look<2.5?(1.2-L(col)*.6):1.);
   gl_FragColor=vec4(col,1.);
 }`;
-const STYLE_ID = { pop:1, none:2, film:3 }, GRAIN = { pop:.03, none:0, film:.085 };
 const hx = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
-// ポップアートの配色（暗→明の4色）。場面が変わるたびに順に入れ替わる
+// ポップアートの配色（暗→明の4色）。場面が変わるたびに順に入れ替わる。モノクロのときは灰色の4段
 const PALS = [['#1a1446', '#ff2f6d', '#ffd60a', '#fff7e0'], ['#0b2545', '#00a6d6', '#ff7b00', '#fff1d0'], ['#2b0a3d', '#06c995', '#ffd166', '#fdfcf0']].map(p => p.map(hx));
-let gl = null, U = {}, tex = null, W = 0, H = 0, dpr = 1, srcW = 640, srcH = 360;
+const GREYS = ['#101012', '#6f6f72', '#c4c3be', '#f6f4ee'].map(hx);
+const LOOK_ID = { none:0, manga:1, film:2, pop:3 };
+const WORK = 1.3;   // 線画を作る作業解像度（CSSピクセル比）。上げると線が細く、下げると太くなる
+let gl = null, PH = null, PV = null, PF = null, tex = null, tA = null, tB = null, W = 0, H = 0, dpr = 1, srcW = 640, srcH = 360, ww = 0, wh = 0;
+function mkProg(fs, names){
+  const sh = (type, s) => { const o = gl.createShader(type); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+  const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+  gl.bindAttribLocation(p, 0, 'a_pos'); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}; names.forEach(n => { u[n] = gl.getUniformLocation(p, n); });
+  return { p, u };
+}
+function mkTex(filter){
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  return t;
+}
+function mkTarget(filter){ const t = mkTex(filter), f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, null); return { t, f }; }
 function initGL(){
   try{
     gl = cv.getContext('webgl', { alpha:false, antialias:false }) || cv.getContext('experimental-webgl', { alpha:false });
     if (!gl) return false;
-    const sh = (type, s) => { const o = gl.createShader(type); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
-    const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
-    gl.bindAttribLocation(p, 0, 'a_pos'); gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
-    gl.useProgram(p);
-    ['u_tex', 'u_res', 'u_src', 'u_t', 'u_dpr', 'u_manga', 'u_glitch', 'u_burst', 'u_lines', 'u_mirror', 'u_paper', 'u_ink', 'u_style', 'u_grain', 'u_p0', 'u_p1', 'u_p2', 'u_p3'].forEach(n => { U[n] = gl.getUniformLocation(p, n); });
+    const S = ['u_tex', 'u_src', 'u_asp', 'u_mirror'];
+    PH = mkProg(FS_H, S.concat(['u_wres']));
+    PV = mkProg(FS_V, ['u_a', 'u_wres']);
+    PF = mkProg(FS_F, S.concat(['u_fx', 'u_res', 'u_t', 'u_dpr', 'u_mono', 'u_look', 'u_glitch', 'u_burst', 'u_lines', 'u_grain', 'u_paper', 'u_ink', 'u_p0', 'u_p1', 'u_p2', 'u_p3']));
     const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.uniform1i(U.u_tex, 0); gl.uniform3f(U.u_paper, .965, .957, .933); gl.uniform3f(U.u_ink, .063, .063, .071);
-    stillDirty = true;
+    tex = mkTex(gl.LINEAR); tA = mkTarget(gl.NEAREST); tB = mkTarget(gl.LINEAR);
+    ww = wh = 0; stillDirty = true;
     return true;
   }catch(e){ console.error(e); gl = null; return false; }
 }
@@ -707,13 +764,44 @@ function layout(){
   W = cv.clientWidth || 1; H = cv.clientHeight || 1; dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = Math.round(W * dpr), h = Math.round(H * dpr);
   if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+  const k = Math.min(WORK, dpr), nw = Math.max(2, Math.round(W * k)), nh = Math.max(2, Math.round(H * k));
+  if (gl && (nw !== ww || nh !== wh)){
+    ww = nw; wh = nh;
+    [tA, tB].forEach(o => { gl.bindTexture(gl.TEXTURE_2D, o.t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ww, wh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); });
+  }
 }
 function upload(t){
   let el = demo, w = 640, h = 360;
   if ((src.kind === 'camera' || src.kind === 'file') && video.readyState >= 2 && video.videoWidth){ el = video; w = video.videoWidth; h = video.videoHeight; }
   else if (src.kind === 'image'){ if (!stillDirty) return; stillDirty = false; el = still; w = still.width; h = still.height; }
   if (el === demo) drawDemo(t);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   try{ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, el); srcW = w; srcH = h; }catch(e){}
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+}
+function render(now){
+  layout();
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); upload(now);
+  const mirror = src.kind === 'camera' && src.mirror ? 1 : 0, asp = cv.width / cv.height;
+  const srcU = u => { gl.uniform1i(u.u_tex, 0); gl.uniform2f(u.u_src, srcW, srcH); gl.uniform1f(u.u_asp, asp); gl.uniform1f(u.u_mirror, mirror); };
+  if (look === 'manga' || look === 'pop'){
+    gl.viewport(0, 0, ww, wh);
+    gl.useProgram(PH.p); gl.bindFramebuffer(gl.FRAMEBUFFER, tA.f); srcU(PH.u); gl.uniform2f(PH.u.u_wres, ww, wh); gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.useProgram(PV.p); gl.bindFramebuffer(gl.FRAMEBUFFER, tB.f);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tA.t); gl.uniform1i(PV.u.u_a, 1); gl.uniform2f(PV.u.u_wres, ww, wh); gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+  // グリッチは「入」なら常時、「切」でも映像をタップした瞬間だけ走る
+  const glitch = glitchOn || tap > .03, u = PF.u, mono = base === 'mono', P = mono ? GREYS : PALS[pal % PALS.length];
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(PF.p);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tB.t); gl.uniform1i(u.u_fx, 1); gl.activeTexture(gl.TEXTURE0);
+  srcU(u); gl.uniform2f(u.u_res, cv.width, cv.height); gl.uniform1f(u.u_t, now % 600); gl.uniform1f(u.u_dpr, dpr);
+  gl.uniform1f(u.u_mono, mono ? 1 : 0); gl.uniform1f(u.u_look, LOOK_ID[look] || 0); gl.uniform1f(u.u_glitch, glitch ? 1 : 0);
+  gl.uniform1f(u.u_burst, glitchOn ? Math.min(1.2, burst + (A.playing && !reduce ? beatPulse() * .16 : 0)) : tap);
+  gl.uniform1f(u.u_lines, lines);
+  gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'none' ? (mono ? .04 : 0) : look === 'manga' && !mono ? .02 : .03);
+  gl.uniform3f(u.u_paper, .965, .957, .933); gl.uniform3f(u.u_ink, .063, .063, .071);
+  gl.uniform3fv(u.u_p0, P[0]); gl.uniform3fv(u.u_p1, P[1]); gl.uniform3fv(u.u_p2, P[2]); gl.uniform3fv(u.u_p3, P[3]);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
 /* ───────────── 進行：映像10秒 → 時刻カード → 映像 ───────────── */
@@ -728,7 +816,7 @@ function tickClock(){
   const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
   lastSec = s; const m = d.getMinutes(), h = d.getHours();
   $('ctime').textContent = p2(h) + ' ' + p2(m) + ' ' + p2(s);
-  if (!reduce && fx !== 'mono') burst = Math.max(burst, .3);
+  if (!reduce && glitchOn) burst = Math.max(burst, .3);
   if (m !== lastMin){
     const ds = d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + WD[d.getDay()];
     $('csub').textContent = (place ? place + ' / ' : '') + ds; $('tagDate').textContent = ds;
@@ -754,19 +842,7 @@ function frame(ms){
   }
   burst *= Math.exp(-dt * 4); tap *= Math.exp(-dt * 4); lines *= Math.exp(-dt * 1.6);
   if (!gl) return;
-  layout(); upload(now);
-  // グリッチ系は常時、それ以外はタップした瞬間だけ乱す
-  const always = fx === 'glitch' || fx === 'both', glitch = always || tap > .03;
-  const P = PALS[pal % PALS.length];
-  gl.viewport(0, 0, cv.width, cv.height);
-  gl.uniform2f(U.u_res, cv.width, cv.height); gl.uniform2f(U.u_src, srcW, srcH);
-  gl.uniform1f(U.u_t, now % 600); gl.uniform1f(U.u_dpr, dpr);
-  gl.uniform1f(U.u_manga, fx === 'manga' || fx === 'both' ? 1 : 0); gl.uniform1f(U.u_glitch, glitch ? 1 : 0);
-  gl.uniform1f(U.u_burst, always ? Math.min(1.2, burst + (A.playing && !reduce ? beatPulse() * .16 : 0)) : tap);
-  gl.uniform1f(U.u_style, STYLE_ID[fx] || 0); gl.uniform1f(U.u_grain, GRAIN[fx] === undefined ? .05 : GRAIN[fx]);
-  gl.uniform3fv(U.u_p0, P[0]); gl.uniform3fv(U.u_p1, P[1]); gl.uniform3fv(U.u_p2, P[2]); gl.uniform3fv(U.u_p3, P[3]);
-  gl.uniform1f(U.u_lines, lines); gl.uniform1f(U.u_mirror, src.kind === 'camera' && src.mirror ? 1 : 0);
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  render(now);
 }
 cv.addEventListener('pointerdown', () => { burst = 1; tap = 1; });
 cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); gl = null; });
@@ -776,7 +852,7 @@ document.addEventListener('visibilitychange', () => {
   if (src.kind === 'camera' || src.kind === 'file') video.play().catch(() => {});
   if (running && navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
 });
-window.__ar = { set(mode, b, l, p){ fx = mode; pal = p || 0; hold = true; running = true; startBox.hidden = true; ask.hidden = true; card.className = 'card'; syncSrc(); setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
+window.__ar = { set(b0, l0, g0, b, l, p){ base = b0; look = l0; glitchOn = !!g0; pal = p || 0; hold = true; running = true; startBox.hidden = true; ask.hidden = true; card.className = 'card'; syncSrc(); clearInterval(window.__iv); window.__iv = setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
 
 if (!initGL()) msg.textContent = 'このブラウザではWebGLを使えないため、映像を表示できません。';
 syncUI(); syncSrc(); wake(); tickClock();
