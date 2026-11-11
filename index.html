@@ -71,26 +71,35 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
 .dim #menu{opacity:.4}
 
 /* 下からせり上がるシート */
-.shade{position:fixed; inset:0; z-index:6; cursor:pointer; background:rgba(16,16,18,.45); opacity:0; visibility:hidden; transition:opacity .25s, visibility 0s .25s}
+.shade{position:fixed; inset:0; z-index:6; cursor:pointer; background:transparent; opacity:0; visibility:hidden; transition:opacity .25s, visibility 0s .25s}
 .shade.open{opacity:1; visibility:visible; transition:opacity .25s}
 .sheet{position:fixed; z-index:7; left:0; right:0; bottom:0; max-height:82%; display:flex; flex-direction:column;
-  background:var(--paper); border-top:3px solid var(--ink); transform:translateY(102%); visibility:hidden;
+  background:rgba(246,244,238,.5); border-top:3px solid var(--ink); transform:translateY(102%); visibility:hidden;
   transition:transform .3s cubic-bezier(.2,.8,.2,1), visibility 0s .3s}
 @supports (height:100dvh){ .sheet{bottom:auto; top:100dvh; max-height:82dvh; transform:translateY(2%)} .sheet.open{transform:translateY(-100%)} }
 .sheet.open{visibility:visible; transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 @supports not (height:100dvh){ .sheet.open{transform:none} }
-.sheet-head{flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px;
+.sheet-head{background:var(--paper); flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:10px max(16px,var(--sr)) 10px max(16px,var(--sl)); border-bottom:2px solid var(--ink)}
 .sheet-head h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:14px; letter-spacing:.16em}
 .sheet-body{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:18px;
   padding:16px max(16px,var(--sr)) calc(max(16px,var(--sb)) + 28px) max(16px,var(--sl))}
 .grp{display:flex; flex-direction:column; gap:8px; min-width:0}
+/* シートは半透明。下の映像が見えるので、文字と操作部だけ紙色の地を敷く */
+.grp h3, .note, .lab{align-self:flex-start; background:var(--paper); padding:2px 6px}
 .grp h3{margin:0; font-family:var(--font-d); font-weight:600; font-size:11px; letter-spacing:.14em}
+.lab{font-size:12px; font-weight:700}
+.slide{display:flex; align-items:center; gap:10px; background:var(--paper); border:2px solid var(--ink); padding:0 12px; font-size:12px}
+.slide input{flex:1 1 auto; min-width:0}
+.toast{position:fixed; z-index:8; left:50%; top:calc(max(8px,var(--st)) + 70px); transform:translate(-50%,-6px); max-width:calc(100% - 48px);
+  background:var(--ink); color:var(--paper); padding:8px 14px; font-size:13px; letter-spacing:.06em; text-align:center; pointer-events:none;
+  opacity:0; transition:opacity .25s, transform .25s}
+.toast.show{opacity:1; transform:translate(-50%,0)}
 .seg{display:flex; flex-wrap:wrap; gap:8px}
 .seg.two > *{flex:1 1 0}
 .note{margin:0; font-size:12px; font-weight:500; color:var(--mute); line-height:1.5}
 input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
-@media (prefers-reduced-motion: reduce){ .card.in,.card.out,.sheet,.sheet.open,.shade,.shade.open{transition:none} }
+@media (prefers-reduced-motion: reduce){ .card.in,.card.out,.sheet,.sheet.open,.shade,.shade.open,.toast{transition:none} }
 </style>
 
 </head>
@@ -129,6 +138,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 </div>
 
 <button type="button" id="menu" aria-expanded="false" aria-controls="sheet">設定</button>
+<div class="toast" id="toast" role="status"></div>
 <div class="shade" id="shade"></div>
 <section class="sheet" id="sheet" aria-label="設定">
   <div class="sheet-head"><h2>設定</h2><button type="button" id="close">閉じる</button></div>
@@ -151,10 +161,13 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       <h3>フィルタ</h3>
       <div class="seg" id="segLook">
         <button type="button" id="look-none" data-v="none">なし</button>
-        <button type="button" id="look-manga" data-v="manga">マンガ</button>
         <button type="button" id="look-film" data-v="film">フィルム調</button>
+        <button type="button" id="look-vivid" data-v="vivid">ビビッド</button>
+        <button type="button" id="look-manga" data-v="manga">マンガ</button>
         <button type="button" id="look-pop" data-v="pop">ポップアート</button>
       </div>
+      <label class="lab" for="lineW">線の太さ（マンガ・ポップアート）</label>
+      <div class="slide"><span>細</span><input type="range" id="lineW" min="0" max="1" step="0.01"><span>太</span></div>
     </div>
     <div class="grp">
       <h3>エフェクト</h3>
@@ -178,6 +191,8 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
         <button type="button" id="st-electro" data-v="electro">エレクトロ</button>
         <button type="button" id="st-musicbox" data-v="musicbox">オルゴール</button>
         <button type="button" id="st-lofi" data-v="lofi">ローファイ</button>
+        <button type="button" id="st-chip" data-v="chip">8bit</button>
+        <button type="button" id="st-birds" data-v="birds">鳥のさえずり</button>
       </div>
     </div>
     <div class="grp">
@@ -193,7 +208,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
     </div>
     <div class="grp">
       <h3><label for="vol">音量</label></h3>
-      <input type="range" id="vol" min="0" max="1" step="0.01">
+      <div class="slide"><input type="range" id="vol" min="0" max="1" step="0.01"></div>
     </div>
   </div>
 </section>
@@ -229,7 +244,8 @@ const MOODS = {
 };
 const STYLES = {
   piano:{ label:'ピアノ', tempo:1 }, electro:{ label:'エレクトロ', tempo:1.04 },
-  musicbox:{ label:'オルゴール', tempo:.8 }, lofi:{ label:'ローファイ', tempo:.82 }
+  musicbox:{ label:'オルゴール', tempo:.8 }, lofi:{ label:'ローファイ', tempo:.82 },
+  chip:{ label:'8bit', tempo:1.06 }, birds:{ label:'鳥のさえずり', tempo:.7 }
 };
 if (!STYLES[state.style]) state.style = 'piano';
 if (state.mood !== 'auto' && !MOODS[state.mood]) state.mood = 'auto';
@@ -317,6 +333,18 @@ function epiano(m, t, v, d){
   car.start(t); mod.start(t); car.stop(t + d + .05); mod.stop(t + d + .05);
 }
 
+// 鳥のさえずり：高い正弦波を短く上下させた音を数個つなげる
+function bird(t, v){
+  const c = A.ctx, n = 2 + (Math.random() * 5 | 0), f0 = 2300 + Math.random() * 2400, up = Math.random() < .55; let tt = t;
+  for (let i = 0; i < n; i++){
+    const o = c.createOscillator(), g = c.createGain(), d = .04 + Math.random() * .09;
+    const fa = f0 * (1 + (Math.random() - .5) * .3), fb = fa * (up ? 1.2 + Math.random() * .4 : .72 + Math.random() * .1);
+    o.frequency.setValueAtTime(fa, tt); o.frequency.exponentialRampToValueAtTime(fb, tt + d);
+    g.gain.setValueAtTime(.0001, tt); g.gain.exponentialRampToValueAtTime(v, tt + d * .3); g.gain.exponentialRampToValueAtTime(.0001, tt + d);
+    o.connect(g); g.connect(A.music); g.connect(A.send); o.start(tt); o.stop(tt + d + .02);
+    tt += d + .015 + Math.random() * .06;
+  }
+}
 function newMotif(){
   const r = [], c = []; let i = 2 + (Math.random() * 3 | 0);
   for (let k = 0; k < 8; k++){
@@ -345,7 +373,7 @@ function params(){
 function applyParams(t){
   const np = params(), old = S.P;
   S.P = np; S.beatRef = t; S.dirty = false;
-  A.lp.frequency.setTargetAtTime(np.cut, t, .25);
+  A.lp.frequency.setTargetAtTime(np.style === 'birds' ? Math.max(np.cut, 8000) : np.style === 'chip' ? Math.max(np.cut, 3200) : np.cut, t, .25);
   A.send.gain.setTargetAtTime(np.send, t, .25);
   A.delay.delayTime.setTargetAtTime(60 / np.bpm * .75, t, .2);
   if (!old || old.style !== np.style || !S.motif) newMotif();
@@ -383,6 +411,22 @@ function scheduleStep(s, t){
     if (s === 0) bell(b + 24, t, .1);
     if (s === 8) bell(voice(tones[1]), t, .07);
     if (s === 4 || s === 12) bell(voice(tones[2]), t, .05);
+  } else if (P.style === 'chip'){
+    // 8bit：矩形波のメロディと速いアルペジオ、三角波のベース、ノイズのドラム。残響なし
+    if (D > 0 || e){ const n = tones[s % tones.length] + (s % 8 > 3 ? 12 : 0); osc('square', mf(voice(n) + 12), t, .002, sd * .8, .022); }
+    if (e && M.r[h]) osc('square', mf(mel(ci) + (P.oct ? 0 : 12)), t, .003, sd * 1.9, .05);
+    if (s % 4 === 0 || (D > 0 && s % 4 === 2)) osc('triangle', mf(b + (s % 8 === 6 ? 7 : 0)), t, .003, sd * 1.7, .22);
+    if (D > 0){
+      if (q){ const c = A.ctx, o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(40, t + .09);
+        g.gain.setValueAtTime(D > 1 ? .4 : .28, t); g.gain.exponentialRampToValueAtTime(.0001, t + .12); o.connect(g); g.connect(A.music); o.start(t); o.stop(t + .14); }
+      if (s === 4 || s === 12) noise(t, .09, .1, 'highpass', 1800);
+      if (D > 1 && s % 2 === 1) noise(t, .025, .04, 'highpass', 6000);
+    }
+  } else if (P.style === 'birds'){
+    // 鳥のさえずり：拍のないやわらかい和音の上で、ときどき鳥が鳴く
+    if (s === 0){ tones.forEach(n => osc('sine', mf(voice(n)), t, 1.2, sd * 17, .03, true)); osc('sine', mf(b), t, 1.2, sd * 17, .05); }
+    if (Math.random() < (D > 1 ? .17 : D === 1 ? .11 : .05)) bird(t + Math.random() * sd, .035 + Math.random() * .045);
+    if (D > 0 && e && M.r[h] && S.bar % 4 === 3) bell(mel(ci) + 12, t, .025);
   } else {
     const tt = t + (s % 2 === 1 ? sd * .3 : 0);
     if (s === 0) tones.forEach((n, i) => epiano(voice(n), t + i * .012, .07, 1.8));
@@ -507,7 +551,7 @@ let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environme
 // 見た目は3つの組み合わせ：ベース（カラー/モノクロ）× フィルタ × グリッチ。以前の単一フィルタ設定は読み替える
 const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:['mono', 'none', '1'], mono:['mono', 'none', '0'], pop:['color', 'pop', '0'], film:['color', 'film', '0'], none:['color', 'none', '0'] }[store.get('fx', '')] || ['mono', 'manga', '0'];
 let base = store.get('base', OLD[0]) === 'color' ? 'color' : 'mono', look = store.get('look', OLD[1]), glitchOn = store.get('glitch', OLD[2]) === '1';
-if (!['none', 'manga', 'film', 'pop'].includes(look)) look = 'manga';
+if (!['none', 'film', 'vivid', 'manga', 'pop'].includes(look)) look = 'manga';
 
 function drawDemo(t){
   const c = DX, g = c.createLinearGradient(0, 0, 0, 360);
@@ -574,7 +618,7 @@ fileIn.addEventListener('change', () => {
   const f = fileIn.files && fileIn.files[0]; if (!f) return;
   const url = URL.createObjectURL(f);
   if (f.type.startsWith('video/')){
-    stopStream(); video.srcObject = null; video.src = url; video.loop = true; video.muted = true;
+    stopStream(); video.srcObject = null; video.src = url; video.loop = true; video.muted = true; video.setAttribute('loop', '');
     video.play().catch(() => {}); src = { kind:'file' }; begin();
   } else {
     const im = new Image();
@@ -589,13 +633,39 @@ fileIn.addEventListener('change', () => {
   }
   fileIn.value = '';
 });
+// 動画が最後まで行ったら頭から。loop が効かない端末でも止まらないようにする
+video.addEventListener('ended', () => { if (src.kind === 'file'){ video.currentTime = 0; video.play().catch(() => {}); } });
+// 見張り：映像が止まっていたら再開する。バックグラウンド復帰でカメラが切れていたらつなぎ直す
+let lastCT = -1, stall = 0, camRetry = 0, restarting = false;
+function watchdog(){
+  if (document.hidden || restarting || (src.kind !== 'camera' && src.kind !== 'file')) { stall = 0; return; }
+  const ct = video.currentTime; stall = (video.paused || ct === lastCT) ? stall + 1 : 0; lastCT = ct;
+  if (stall === 0) camRetry = 0;
+  if (stall < 2) return;
+  stall = 0;
+  if (src.kind === 'file'){ if (video.ended || (video.duration && ct >= video.duration - .1)) video.currentTime = 0; video.play().catch(() => {}); return; }
+  const tr = stream && stream.getVideoTracks()[0];
+  if (!tr || tr.readyState !== 'live' || ++camRetry >= 3){ camRetry = 0; restarting = true; startCamera().then(() => { restarting = false; }, () => { restarting = false; }); }
+  else video.play().catch(() => {});
+}
+setInterval(watchdog, 1000);
 $('camStart').addEventListener('click', () => { prime(); startCamera(); });
 $('demoStart').addEventListener('click', () => { prime(); src = { kind:'demo' }; begin(); });
 document.querySelectorAll('label[for=file]').forEach(l => l.addEventListener('click', prime));
 $('segSrc').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; facing = b.dataset.v; startCamera(); });
-$('segBase').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; base = b.dataset.v; store.set('base', base); syncSrc(); });
-$('segLook').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; look = b.dataset.v; store.set('look', look); syncSrc(); });
-$('fxGlitch').addEventListener('click', () => { glitchOn = !glitchOn; store.set('glitch', glitchOn ? '1' : '0'); if (glitchOn) burst = Math.max(burst, .7); syncSrc(); });
+// 見た目を変えたら手応えを返す：今の組み合わせを短く表示し、映像を一瞬だけ乱す
+const toast = $('toast'), LOOK_NAME = { none:'', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート' };
+let toastTimer = null;
+function changed(pulse){
+  toast.textContent = [base === 'color' ? 'カラー' : 'モノクロ', LOOK_NAME[look], glitchOn ? 'グリッチ' : ''].filter(Boolean).join(' × ');
+  toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+  if (pulse && !reduce) tap = .7;
+  syncSrc();
+}
+$('segBase').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; base = b.dataset.v; store.set('base', base); changed(true); });
+$('segLook').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; look = b.dataset.v; store.set('look', look); changed(true); });
+$('fxGlitch').addEventListener('click', () => { glitchOn = !glitchOn; store.set('glitch', glitchOn ? '1' : '0'); if (glitchOn) burst = Math.max(burst, .9); changed(false); });
+
 function syncSrc(){
   $('tagSrc').hidden = src.kind !== 'demo';
   document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', src.kind === 'camera' && b.dataset.v === facing ? 'true' : 'false'));
@@ -668,7 +738,7 @@ void main(){
   vec3 col;
   if(u_look<.5){
     col=mono?mix(u_ink,u_paper,smoothstep(vec3(.04),vec3(.96),c)):c;
-  } else if(u_look<1.5 || u_look>2.5){
+  } else if(u_look<1.5 || (u_look>2.5 && u_look<3.5)){
     vec3 fxv=texture2D(u_fx,uv).rgb;
     float dog=(fxv.r-.5)/12., tone=fxv.g;
     // 細いペン線：コントラストの弱い所ほど薄く、暗部では少し太らせる
@@ -695,6 +765,12 @@ void main(){
       col=mix(lo,hi,smoothstep(r+aa,r-aa,length(f))*step(.04,r));
       col=mix(col,u_ink,line);
     }
+  } else if(u_look>3.5){
+    // ビビッド：強めのコントラストと高い彩度。モノクロでは白黒をはっきり分ける
+    c=mix(c,smoothstep(vec3(.03),vec3(.97),c),.75);
+    if(!mono){ float l3=L(c); c=mix(vec3(l3),c,1.7); c=clamp(c,0.,1.); c=mix(c,c*c*(3.-2.*c),.25); }
+    else c=mix(c,c*c*(3.-2.*c),.6);
+    col=c;
   } else {
     // フィルム調：浅めの黒、周辺減光。カラーは彩度控えめで影を青緑・明部を暖色に、モノクロは硬めの階調
     if(mono){
@@ -726,8 +802,11 @@ const hx = h => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) 
 // ポップアートの配色（暗→明の4色）。場面が変わるたびに順に入れ替わる。モノクロのときは灰色の4段
 const PALS = [['#1a1446', '#ff2f6d', '#ffd60a', '#fff7e0'], ['#0b2545', '#00a6d6', '#ff7b00', '#fff1d0'], ['#2b0a3d', '#06c995', '#ffd166', '#fdfcf0']].map(p => p.map(hx));
 const GREYS = ['#101012', '#6f6f72', '#c4c3be', '#f6f4ee'].map(hx);
-const LOOK_ID = { none:0, manga:1, film:2, pop:3 };
-const WORK = 1.3;   // 線画を作る作業解像度（CSSピクセル比）。上げると線が細く、下げると太くなる
+const LOOK_ID = { none:0, manga:1, film:2, pop:3, vivid:4 };
+// 線の太さ：線画を作る作業解像度（CSSピクセル比）で決まる。解像度を下げるほど線が太くなる
+let lineW = Math.min(1, Math.max(0, parseFloat(store.get('lineW', '0.5')) || 0));
+$('lineW').value = lineW;
+$('lineW').addEventListener('input', () => { lineW = parseFloat($('lineW').value); store.set('lineW', String(lineW)); });
 let gl = null, PH = null, PV = null, PF = null, tex = null, tA = null, tB = null, W = 0, H = 0, dpr = 1, srcW = 640, srcH = 360, ww = 0, wh = 0;
 function mkProg(fs, names){
   const sh = (type, s) => { const o = gl.createShader(type); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
@@ -764,7 +843,7 @@ function layout(){
   W = cv.clientWidth || 1; H = cv.clientHeight || 1; dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = Math.round(W * dpr), h = Math.round(H * dpr);
   if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
-  const k = Math.min(WORK, dpr), nw = Math.max(2, Math.round(W * k)), nh = Math.max(2, Math.round(H * k));
+  const k = 1.9 - 1.25 * lineW, nw = Math.max(2, Math.round(W * k)), nh = Math.max(2, Math.round(H * k));
   if (gl && (nw !== ww || nh !== wh)){
     ww = nw; wh = nh;
     [tA, tB].forEach(o => { gl.bindTexture(gl.TEXTURE_2D, o.t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, ww, wh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); });
@@ -798,7 +877,7 @@ function render(now){
   gl.uniform1f(u.u_mono, mono ? 1 : 0); gl.uniform1f(u.u_look, LOOK_ID[look] || 0); gl.uniform1f(u.u_glitch, glitch ? 1 : 0);
   gl.uniform1f(u.u_burst, glitchOn ? Math.min(1.2, burst + (A.playing && !reduce ? beatPulse() * .16 : 0)) : tap);
   gl.uniform1f(u.u_lines, lines);
-  gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'none' ? (mono ? .04 : 0) : look === 'manga' && !mono ? .02 : .03);
+  gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'vivid' ? .012 : look === 'none' ? (mono ? .04 : 0) : look === 'manga' && !mono ? .02 : .03);
   gl.uniform3f(u.u_paper, .965, .957, .933); gl.uniform3f(u.u_ink, .063, .063, .071);
   gl.uniform3fv(u.u_p0, P[0]); gl.uniform3fv(u.u_p1, P[1]); gl.uniform3fv(u.u_p2, P[2]); gl.uniform3fv(u.u_p3, P[3]);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -821,7 +900,7 @@ function tickClock(){
     const ds = d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + WD[d.getDay()];
     $('csub').textContent = (place ? place + ' / ' : '') + ds; $('tagDate').textContent = ds;
     $('srtime').textContent = 'AR Clock ' + h + '時' + m + '分';
-    if (lastMin !== -1 && !reduce){ burst = 1; lines = 1; }
+    if (lastMin !== -1 && !reduce) burst = 1;
   }
   if (h !== lastHour){ if (lastHour !== -1) S.dirty = true; updateCaption(); }
   if (state.chime){ if (m === 59 && s >= 57) pip(440, .12, .32); if (m === 0 && s === 0) pong(); }
@@ -850,6 +929,7 @@ cv.addEventListener('webglcontextrestored', () => { initGL(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   if (src.kind === 'camera' || src.kind === 'file') video.play().catch(() => {});
+  stall = 1; watchdog();
   if (running && navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
 });
 window.__ar = { set(b0, l0, g0, b, l, p){ base = b0; look = l0; glitchOn = !!g0; pal = p || 0; hold = true; running = true; startBox.hidden = true; ask.hidden = true; card.className = 'card'; syncSrc(); clearInterval(window.__iv); window.__iv = setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
