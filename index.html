@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f6f4ee">
+<meta name="theme-color" content="#101012">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>AR Clock</title>
@@ -28,15 +28,16 @@ body{
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
 
 /* 画面いっぱいのコマ。余白はノッチやホームバーの分だけ取る */
-.app{position:fixed; inset:0; display:flex; background:var(--paper);
-  padding:max(8px,var(--st)) max(8px,var(--sr)) max(8px,var(--sb)) max(8px,var(--sl))}
+.app{position:fixed; inset:0; display:flex; background:var(--ink)}
 @supports (height:100dvh){ .app{bottom:auto; height:100dvh} }
-.stage{position:relative; flex:1 1 auto; min-width:0; min-height:0; border:3px solid var(--ink); background:var(--ink); overflow:hidden}
+.stage{position:relative; flex:1 1 auto; min-width:0; min-height:0; background:var(--ink); overflow:hidden}
 #gl{position:absolute; inset:0; width:100%; height:100%; display:block}
 #vid{position:absolute; left:0; top:0; width:2px; height:2px; opacity:0; pointer-events:none}
-.tag{position:absolute; z-index:1; background:var(--paper); color:var(--ink); border:2px solid var(--ink); padding:3px 8px;
-  font-family:var(--font-d); font-weight:800; font-size:11px; letter-spacing:.16em; pointer-events:none; font-variant-numeric:tabular-nums}
-.tag.tl{left:8px; top:8px} .tag.br{right:8px; bottom:8px} .tag.bl{left:8px; bottom:8px; font-family:var(--font-u); letter-spacing:.06em}
+/* 場所と日付は文字だけを映像に直に載せる。下の映像と反転して重なるので、明るい所でも暗い所でも読める */
+.tag{position:absolute; z-index:1; color:#fff; mix-blend-mode:difference; pointer-events:none;
+  font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.18em; font-variant-numeric:tabular-nums}
+.tag.tl{left:max(16px,var(--sl)); top:calc(var(--st) + 22px)} .tag.br{right:max(16px,var(--sr)); bottom:calc(var(--sb) + 18px)}
+.hint{position:absolute; z-index:1; left:max(12px,var(--sl)); bottom:calc(var(--sb) + 12px); pointer-events:none; font-size:12px; padding:7px 12px}
 
 button, label.btn{
   font:inherit; font-size:14px; color:var(--ink); background:var(--paper); margin:0;
@@ -66,7 +67,7 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
 .sub.dimmed{opacity:.55; letter-spacing:.2em}
 
 /* 設定ボタン：右上に1つだけ。しばらく触らないと薄くなる */
-#menu{position:fixed; z-index:5; top:calc(max(8px,var(--st)) + 11px); right:calc(max(8px,var(--sr)) + 11px);
+#menu{position:fixed; z-index:5; top:calc(var(--st) + 10px); right:max(12px,var(--sr)); width:44px; padding:0;
   min-height:44px; padding:8px 14px; font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.14em; transition:opacity .6s}
 .dim #menu{opacity:.4}
 
@@ -91,7 +92,7 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
 .lab{font-size:12px; font-weight:700}
 .slide{display:flex; align-items:center; gap:10px; background:var(--paper); border:2px solid var(--ink); padding:0 12px; font-size:12px}
 .slide input{flex:1 1 auto; min-width:0}
-.toast{position:fixed; z-index:8; left:50%; top:calc(max(8px,var(--st)) + 70px); transform:translate(-50%,-6px); max-width:calc(100% - 48px);
+.toast{position:fixed; z-index:8; left:50%; top:calc(var(--st) + 66px); transform:translate(-50%,-6px); max-width:calc(100% - 48px);
   background:var(--ink); color:var(--paper); padding:8px 14px; font-size:13px; letter-spacing:.06em; text-align:center; pointer-events:none;
   opacity:0; transition:opacity .25s, transform .25s}
 .toast.show{opacity:1; transform:translate(-50%,0)}
@@ -101,12 +102,12 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
 input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 /* ガラス調のUI：半透明の面（ぼかし入り）の上に、半透明の操作部を重ねる */
 :root{ --glass:rgba(24,24,28,.5); --glass-2:rgba(255,255,255,.15); --glass-line:rgba(255,255,255,.24); --on:#fff }
-.sheet, .start, #menu, .toast{ background:var(--glass); color:var(--on); border:1px solid var(--glass-line);
+.sheet, .start, #menu, .toast, .hint{ background:var(--glass); color:var(--on); border:1px solid var(--glass-line);
   -webkit-backdrop-filter:blur(18px) saturate(1.6); backdrop-filter:blur(18px) saturate(1.6); box-shadow:0 10px 40px rgba(0,0,0,.3) }
 .sheet{ border-width:1px 0 0; border-radius:28px 28px 0 0 }
 .sheet-head{ background:transparent; border-bottom:1px solid var(--glass-line) }
 .start{ border-radius:28px }
-#menu, .toast{ border-radius:999px }
+#menu, .toast, .hint{ border-radius:999px }
 .sheet button, .sheet label.btn, .start button, .start label.btn{ background:var(--glass-2); color:var(--on); border:1px solid var(--glass-line); border-radius:16px }
 .sheet button[aria-pressed="true"], .start .primary{ background:rgba(255,255,255,.9); color:#111; border-color:transparent }
 .grp h3, .note, .lab{ background:transparent; padding:0; color:rgba(255,255,255,.82) }
@@ -127,9 +128,9 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
   <main class="stage" id="stage">
     <canvas id="gl" aria-label="フィルタをかけたカメラ映像"></canvas>
     <video id="vid" playsinline muted loop></video>
-    <div class="tag tl" id="tagPlace">AR CLOCK</div>
-    <div class="tag br" id="tagDate"></div>
-    <div class="tag bl" id="tagSrc">サンプル映像</div>
+    <div class="tag tl" id="tagPlace" hidden></div>
+    <div class="tag br" id="tagDate" hidden></div>
+    <div class="hint" id="tagSrc" hidden></div>
     <div class="start" id="start">
       <h2>AR CLOCK</h2>
       <p>目の前の景色にフィルタをかけ、10秒ごとに時刻を出す時計です。</p>
@@ -150,7 +151,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 <div class="card" id="cardA"><div class="time ctime">-- -- --</div><div class="sub csub"></div><div class="sub dimmed cmood"></div></div>
 <div class="card" id="cardB"><div class="time ctime">-- -- --</div><div class="sub csub"></div><div class="sub dimmed cmood"></div></div>
 
-<button type="button" id="menu" aria-expanded="false" aria-controls="sheet">設定</button>
+<button type="button" id="menu" aria-label="設定" aria-expanded="false" aria-controls="sheet"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M19.15 10.08 L21.88 10.44 L21.88 13.56 L19.15 13.92 L18.41 15.70 L20.09 17.88 L17.88 20.09 L15.70 18.41 L13.92 19.15 L13.56 21.88 L10.44 21.88 L10.08 19.15 L8.30 18.41 L6.12 20.09 L3.91 17.88 L5.59 15.70 L4.85 13.92 L2.12 13.56 L2.12 10.44 L4.85 10.08 L5.59 8.30 L3.91 6.12 L6.12 3.91 L8.30 5.59 L10.08 4.85 L10.44 2.12 L13.56 2.12 L13.92 4.85 L15.70 5.59 L17.88 3.91 L20.09 6.12 L18.41 8.30Z M12 8.3a3.7 3.7 0 1 0 0 7.4a3.7 3.7 0 1 0 0-7.4Z"/></svg></button>
 <div class="toast" id="toast" role="status"></div>
 <div class="shade" id="shade"></div>
 <section class="sheet" id="sheet" aria-label="設定">
@@ -181,6 +182,12 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       </div>
       <label class="lab" for="lineW">線の太さ（マンガ・ポップアート）</label>
       <div class="slide"><span>細</span><input type="range" id="lineW" min="0" max="1" step="0.01"><span>太</span></div>
+    </div>
+    <div class="grp">
+      <h3>表示</h3>
+      <div class="seg">
+        <button type="button" id="labelsBtn" aria-pressed="false">場所と日付 OFF</button>
+      </div>
     </div>
     <div class="grp">
       <h3>エフェクト</h3>
@@ -603,7 +610,7 @@ document.addEventListener('visibilitychange', tryResume); addEventListener('page
 
 /* ───────────── 映像ソース：カメラ / 選んだ写真・動画 / サンプル映像 ───────────── */
 const stage = $('stage'), cv = $('gl'), video = $('vid'), startBox = $('start'), msg = $('msg'), fileIn = $('file');
-const demo = document.createElement('canvas'); demo.width = 640; demo.height = 360;
+const demo = document.createElement('canvas'); demo.width = 720; demo.height = 720;
 const DX = demo.getContext('2d'), still = document.createElement('canvas');
 let src = { kind:'demo' }, stream = null, stillDirty = false, running = false, wakeLock = null;
 let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environment';
@@ -612,24 +619,38 @@ const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:
 let base = store.get('base', OLD[0]) === 'color' ? 'color' : 'mono', look = store.get('look', OLD[1]), glitchOn = store.get('glitch', OLD[2]) === '1';
 if (!['none', 'film', 'vivid', 'manga', 'pop'].includes(look)) look = 'manga';
 
+// サンプル映像：黒地に、中心から光の帯が渦を巻いて流れ出す。色はゆっくり巡る
+const GLOW = []; for (let h = 0; h < 24; h++){
+  const g = document.createElement('canvas'); g.width = g.height = 64; const x = g.getContext('2d'), r = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, 'hsla(' + h * 15 + ',100%,72%,.55)'); r.addColorStop(.35, 'hsla(' + h * 15 + ',100%,55%,.16)'); r.addColorStop(1, 'hsla(' + h * 15 + ',100%,50%,0)');
+  x.fillStyle = r; x.fillRect(0, 0, 64, 64); GLOW.push(g);
+}
+const PARTS = [], STREAMS = 6;
+let demoT = -1;
 function drawDemo(t){
-  const c = DX, g = c.createLinearGradient(0, 0, 0, 360);
-  g.addColorStop(0, '#dfe6ee'); g.addColorStop(.6, '#f4efe4'); g.addColorStop(1, '#8d8a84');
-  c.fillStyle = g; c.fillRect(0, 0, 640, 360);
-  c.fillStyle = '#fff'; c.beginPath(); c.arc(500 + Math.sin(t * .2) * 30, 80, 38, 0, 6.2832); c.fill();
-  for (let i = 0; i < 3; i++){ const x = ((t * (12 + i * 7) + i * 260) % 860) - 110, y = 50 + i * 34; c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.ellipse(x, y, 60, 14, 0, 0, 6.2832); c.ellipse(x + 30, y - 10, 34, 14, 0, 0, 6.2832); c.fill(); }
-  for (let i = 0; i < 9; i++){
-    const w = 52 + (i * 37 % 40), h = 90 + (i * 71 % 130), x = i * 74 - 10, sh = 40 + (i * 53 % 120);
-    c.fillStyle = 'rgb(' + sh + ',' + sh + ',' + (sh + 8) + ')'; c.fillRect(x, 300 - h, w, h);
-    c.fillStyle = 'rgba(255,255,240,.85)';
-    for (let yy = 300 - h + 10; yy < 290; yy += 16) for (let xx = x + 7; xx < x + w - 8; xx += 13) if ((xx * 7 + yy * 3 + i) % 5 > 1) c.fillRect(xx, yy, 6, 8);
+  const c = DX, W0 = demo.width, H0 = demo.height, cx = W0 / 2, cy = H0 / 2;
+  if (demoT < 0){ c.fillStyle = '#000'; c.fillRect(0, 0, W0, H0); }
+  demoT = t;
+  c.globalCompositeOperation = 'source-over'; c.fillStyle = 'rgba(0,0,0,.085)'; c.fillRect(0, 0, W0, H0);
+  const ex = cx + Math.sin(t * .31) * 70 + Math.sin(t * .83) * 30, ey = cy + Math.cos(t * .27) * 90 + Math.sin(t * .61) * 40;
+  for (let i = 0; i < STREAMS; i++){
+    const a = i / STREAMS * 6.2832 + t * .22 + Math.sin(t * .37 + i * 1.7) * 1.1, hue = (t * 9 + i * 38 + Math.sin(t * .2 + i) * 30) % 360;
+    for (let k = 0; k < 3; k++){
+      const sp = 1.7 + Math.random() * 1.5, aa = a + (Math.random() - .5) * .16;
+      PARTS.push({ x:ex, y:ey, vx:Math.cos(aa) * sp, vy:Math.sin(aa) * sp, life:0, max:150 + Math.random() * 70, h:((hue / 15 | 0) + 24) % 24, curl:.011 * Math.sin(t * .3 + i * 2.1) + (i % 2 ? .008 : -.008) });
+    }
   }
-  c.fillStyle = '#3a3a3c'; c.fillRect(0, 300, 640, 60);
-  c.fillStyle = '#e8e8e2'; for (let x = -((t * 120) % 80); x < 640; x += 80) c.fillRect(x, 327, 40, 5);
-  const bx = ((t * 90) % 800) - 80, by = 292 - Math.abs(Math.sin(t * 3.2)) * 70;
-  c.fillStyle = '#111'; c.beginPath(); c.arc(bx, by, 22, 0, 6.2832); c.fill();
-  c.fillStyle = '#fff'; c.beginPath(); c.arc(bx - 7, by - 7, 6, 0, 6.2832); c.fill();
-  c.save(); c.translate(120, 150); c.rotate(t * .7); c.fillStyle = '#c9c4ba'; c.fillRect(-34, -34, 68, 68); c.fillStyle = '#222'; c.fillRect(-34, -6, 68, 12); c.restore();
+  c.globalCompositeOperation = 'lighter';
+  for (let n = PARTS.length - 1; n >= 0; n--){
+    const p = PARTS[n]; p.life++;
+    if (p.life > p.max){ PARTS[n] = PARTS[PARTS.length - 1]; PARTS.pop(); continue; }
+    const cs = Math.cos(p.curl), sn = Math.sin(p.curl), vx = p.vx * cs - p.vy * sn, vy = p.vx * sn + p.vy * cs;
+    p.vx = vx * .997; p.vy = vy * .997; p.x += p.vx; p.y += p.vy;
+    const u = p.life / p.max, sz = 10 + u * 46;
+    c.globalAlpha = Math.min(1, u * 8) * (1 - u) * .5;
+    c.drawImage(GLOW[p.h], p.x - sz / 2, p.y - sz / 2, sz, sz);
+  }
+  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
 }
 function stopStream(){ if (stream){ stream.getTracks().forEach(tr => tr.stop()); stream = null; } }
 // 初回だけ「音を流すか」を聞く。答えは覚えておき、次からは聞かずにその通りにする
@@ -709,9 +730,9 @@ document.querySelectorAll('label[for=file]').forEach(l => l.addEventListener('cl
 $('segSrc').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; facing = b.dataset.v; startCamera(); });
 // 見た目を変えたら手応えを返す：今の組み合わせを短く表示し、映像を一瞬だけ乱す
 function say(text){ toast.textContent = text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 1500); }
-// 左下の札：音が止められている / 一時停止中 / サンプル映像 のどれかを知らせる
+// 左下の表示：音が止められている / 一時停止中 を知らせる
 function updateTag(){
-  const el = $('tagSrc'), t = audioLocked() ? 'タップで音を再開' : frozen ? '一時停止中・タップで再開' : src.kind === 'demo' ? 'サンプル映像' : '';
+  const el = $('tagSrc'), t = audioLocked() ? 'タップで音を再開' : frozen ? '一時停止中・タップで再開' : '';
   if (el.textContent !== t) el.textContent = t; el.hidden = !t;
 }
 // 1回タップ＝その場面で止める（静止画にする）／もう1回で再開。2回タップ＝グリッチ
@@ -732,7 +753,12 @@ $('segBase').addEventListener('click', ev => { const b = ev.target.closest('butt
 $('segLook').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; look = b.dataset.v; store.set('look', look); changed(true); });
 $('fxGlitch').addEventListener('click', () => { glitchOn = !glitchOn; store.set('glitch', glitchOn ? '1' : '0'); if (glitchOn) burst = Math.max(burst, .9); changed(false); });
 
+// 場所と日付の表示（既定は非表示）
+let labelsOn = store.get('labels', '0') === '1';
+$('labelsBtn').addEventListener('click', () => { labelsOn = !labelsOn; store.set('labels', labelsOn ? '1' : '0'); syncSrc(); });
 function syncSrc(){
+  $('tagPlace').hidden = $('tagDate').hidden = !labelsOn;
+  $('labelsBtn').setAttribute('aria-pressed', labelsOn ? 'true' : 'false'); $('labelsBtn').textContent = labelsOn ? '場所と日付 ON' : '場所と日付 OFF';
   updateTag();
   document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', src.kind === 'camera' && b.dataset.v === facing ? 'true' : 'false'));
   document.querySelectorAll('#segBase button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === base ? 'true' : 'false'));
@@ -917,7 +943,7 @@ function layout(){
 }
 function upload(t){
   if (frozen) return;   // 一時停止中は最後のコマを持ち続ける
-  let el = demo, w = 640, h = 360;
+  let el = demo, w = demo.width, h = demo.height;
   if ((src.kind === 'camera' || src.kind === 'file') && video.readyState >= 2 && video.videoWidth){ el = video; w = video.videoWidth; h = video.videoHeight; }
   else if (src.kind === 'image'){ if (!stillDirty) return; stillDirty = false; el = still; w = still.width; h = still.height; }
   if (el === demo) drawDemo(t);
@@ -925,7 +951,10 @@ function upload(t){
   try{ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, el); srcW = w; srcH = h; }catch(e){}
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 }
+const lookSel = () => look, baseSel = () => base;
 function render(now){
+  // 最初の選択画面の間は、サンプル映像をフィルタなしのカラーでそのまま見せる
+  const look = running ? lookSel() : 'none', base = running ? baseSel() : 'color';
   layout();
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); upload(now);
   const mirror = src.kind === 'camera' && src.mirror ? 1 : 0, asp = cv.width / cv.height;
@@ -955,9 +984,9 @@ const SC_LEN = 10, CARD_LEN = 4, WIPE = .55;
 // 時刻カードは2枚を交互に使い、1秒ごとに新しい1枚が上下左右のどこかから入ってくる
 const cards = [$('cardA'), $('cardB')], EASE = 'cubic-bezier(.7,0,.2,1)';
 const HIDE = { l:'inset(0 100% 0 0)', r:'inset(0 0 0 100%)', t:'inset(0 0 100% 0)', b:'inset(100% 0 0 0)' };
-let top = 0, inv = false, horiz = Math.random() < .5;
-// 動きは「左右」と「上下」を必ず交互にする。どちら側かだけがランダム
-const side = () => { horiz = !horiz; return (horiz ? 'lr' : 'tb')[Math.random() * 2 | 0]; };
+let top = 0, inv = false, horiz = Math.random() < .5, hs = Math.random() < .5 ? 0 : 1, vs = Math.random() < .5 ? 0 : 1;
+// 動きは「左右」と「上下」を交互にし、同じ向きの中でも側を交互にする（上→右→下→左…のように一巡する）
+const side = () => { horiz = !horiz; if (horiz){ hs = 1 - hs; return 'lr'[hs]; } vs = 1 - vs; return 'tb'[vs]; };
 function clip(el, v, anim){
   el.style.transition = anim && !reduce ? 'clip-path .42s ' + EASE + ', -webkit-clip-path .42s ' + EASE : 'none';
   el.style.webkitClipPath = v; el.style.clipPath = v;
@@ -979,12 +1008,12 @@ let sceneT0 = 0, cardOn = false, burst = 0, tap = 0, pal = 0, lines = 0, lastT =
 const p2 = n => (n < 10 ? '0' : '') + n, WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 let lastSec = -1, lastMin = -1, lastHour = -1, place = '';
 try{ place = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/').pop().replace(/_/g, ' ').toUpperCase(); }catch(e){}
-if (place) $('tagPlace').textContent = place;
+$('tagPlace').textContent = place || 'AR CLOCK';
 function tickClock(){
   const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
   lastSec = s; const m = d.getMinutes(), h = d.getHours();
-  // 0秒の長い音と同時に時刻カードが始まり、0〜5秒は毎秒1枚ずつ（6秒間）。6〜9秒は映像
-  if (running && !hold){ const k = s % 10; if (k <= 5) cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s)); else if (k === 6) cardOut(); }
+  // 0秒の長い音のときはカードを出さず、1〜5秒に毎秒1枚ずつ。6秒になった瞬間に映像へ戻り、次の1秒まで映像
+  if (running && !hold){ const k = s % 10; if (k >= 1 && k <= 5) cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s)); else if (k === 6) cardOut(); }
   if (!reduce && glitchOn) burst = Math.max(burst, s % 10 === 0 ? 1.1 : .8);   // グリッチONのときは、毎秒の音に合わせて映像を乱す
   if (m !== lastMin){
     const ds = d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + WD[d.getDay()];
