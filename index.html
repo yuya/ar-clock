@@ -1,89 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f4ee">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>AR Clock</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
 <style>
-/* Layout: one manga panel filling the screen, showing the camera through a filter; every 10 seconds a flat time card wipes across. Controls sit in a quiet strip below the panel. Single black-and-white look by design. */
+/* Layout: one manga panel filling the phone screen, showing the camera through a filter; every 10 seconds a flat time card wipes across. All controls live in a sheet that slides up from the bottom. Single black-and-white look by design. */
 :root{
   --paper:#f6f4ee; --ink:#101012; --mute:#66666c;
   --font-d:'Archivo','Helvetica Neue',Arial,sans-serif;
   --font-u:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px); --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px);
   color-scheme:light;
 }
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{
-  background:var(--paper); color:var(--ink); font-family:var(--font-u); font-weight:700;
-  overflow:hidden; display:flex; flex-direction:column; gap:10px; padding-block:12px;
+  margin:0; background:var(--paper); color:var(--ink); font-family:var(--font-u); font-weight:700; font-size:14px; overflow:hidden;
   padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
-  -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; -webkit-text-size-adjust:100%;
 }
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
 
-.stage{position:relative; flex:1 1 auto; min-height:0; border:3px solid var(--ink); background:var(--ink); overflow:hidden}
+/* 画面いっぱいのコマ。余白はノッチやホームバーの分だけ取る */
+.app{position:fixed; inset:0; display:flex; background:var(--paper);
+  padding:max(8px,var(--st)) max(8px,var(--sr)) max(8px,var(--sb)) max(8px,var(--sl))}
+@supports (height:100dvh){ .app{bottom:auto; height:100dvh} }
+.stage{position:relative; flex:1 1 auto; min-width:0; min-height:0; border:3px solid var(--ink); background:var(--ink); overflow:hidden}
 #gl{position:absolute; inset:0; width:100%; height:100%; display:block}
 #vid{position:absolute; left:0; top:0; width:2px; height:2px; opacity:0; pointer-events:none}
 .tag{position:absolute; z-index:1; background:var(--paper); color:var(--ink); border:2px solid var(--ink); padding:3px 8px;
   font-family:var(--font-d); font-weight:800; font-size:11px; letter-spacing:.16em; pointer-events:none; font-variant-numeric:tabular-nums}
 .tag.tl{left:8px; top:8px} .tag.br{right:8px; bottom:8px} .tag.bl{left:8px; bottom:8px; font-family:var(--font-u); letter-spacing:.06em}
 
-.start{position:absolute; z-index:2; left:50%; top:50%; transform:translate(-50%,-50%); width:min(300px,calc(100% - 32px));
-  background:var(--paper); border:3px solid var(--ink); box-shadow:6px 6px 0 var(--ink); padding:16px; display:flex; flex-direction:column; gap:10px}
-.start h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:20px; letter-spacing:.08em}
-.start p{margin:0; font-size:12px; font-weight:500; line-height:1.6}
-.start .err{color:var(--ink); font-weight:700}
-.start button, .start label.btn{width:100%; box-sizing:border-box; text-align:center}
+button, label.btn{
+  font:inherit; font-size:14px; color:var(--ink); background:var(--paper); margin:0;
+  border:2px solid var(--ink); border-radius:0; padding:10px 14px; min-height:44px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; text-align:center;
+}
+button[aria-pressed="true"]{background:var(--ink); color:var(--paper)}
+button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px dashed var(--ink); outline-offset:3px}
+
+.start{position:absolute; z-index:2; left:50%; top:50%; transform:translate(-50%,-50%); width:min(320px,calc(100% - 32px));
+  background:var(--paper); border:3px solid var(--ink); box-shadow:6px 6px 0 var(--ink); padding:18px; display:flex; flex-direction:column; gap:10px}
+.start h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:22px; letter-spacing:.08em}
+.start p{margin:0; font-size:13px; font-weight:500; line-height:1.6}
+.start .err{font-weight:700}
+.start .err:empty{display:none}
+.start button, .start label.btn{width:100%}
 .start .primary{background:var(--ink); color:var(--paper)}
 
-.card{position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+.card{position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
   background:var(--paper); color:var(--ink); pointer-events:none; padding-inline:16px; text-align:center;
   -webkit-clip-path:inset(0 100% 0 0); clip-path:inset(0 100% 0 0)}
 .card.inv{background:var(--ink); color:var(--paper)}
 .card.in{-webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
 .card.out{-webkit-clip-path:inset(0 0 0 100%); clip-path:inset(0 0 0 100%); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
-@media (prefers-reduced-motion: reduce){ .card.in,.card.out{transition:none} }
-.time{font-family:var(--font-d); font-weight:800; font-size:clamp(36px,10vw,68px); letter-spacing:.07em; line-height:1; font-variant-numeric:tabular-nums}
-.sub{font-family:var(--font-d); font-weight:600; font-size:11px; letter-spacing:.3em; text-indent:.3em}
+.time{font-family:var(--font-d); font-weight:800; font-size:clamp(44px,15vw,84px); letter-spacing:.05em; line-height:1; font-variant-numeric:tabular-nums}
+.sub{font-family:var(--font-d); font-weight:600; font-size:12px; letter-spacing:.26em; text-indent:.26em}
 .sub.dimmed{opacity:.55; letter-spacing:.2em}
 
-.bar{position:relative; z-index:4; flex:0 0 auto}
-.row{display:flex; gap:8px; flex-wrap:wrap}
-.dim .row button{opacity:.35}
-button, label.btn{
-  font:inherit; font-size:13px; color:var(--ink); background:var(--paper);
-  border:2px solid var(--ink); border-radius:0; padding:8px 12px; min-height:40px; cursor:pointer;
-  transition:opacity .6s; display:inline-flex; align-items:center; justify-content:center;
-}
-button[aria-pressed="true"]{background:var(--ink); color:var(--paper)}
-button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px dashed var(--ink); outline-offset:3px}
-#play{flex:1 1 auto}
+/* 設定ボタン：右上に1つだけ。しばらく触らないと薄くなる */
+#menu{position:fixed; z-index:5; top:calc(max(8px,var(--st)) + 11px); right:calc(max(8px,var(--sr)) + 11px);
+  min-height:44px; padding:8px 14px; font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.14em; transition:opacity .6s}
+.dim #menu{opacity:.4}
 
-.panel{position:absolute; left:0; right:0; bottom:calc(100% + 10px); background:var(--paper); max-height:calc(100vh - 150px); overflow-y:auto;
-  border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink); padding:12px; display:flex; flex-direction:column; gap:12px}
-.grp{display:flex; flex-direction:column; gap:6px; min-width:0}
-.grp h2{margin:0; font-family:var(--font-d); font-weight:600; font-size:11px; letter-spacing:.14em}
-.seg{display:flex; flex-wrap:wrap; gap:6px}
-.seg button, .seg label.btn{padding:6px 10px; min-height:36px; font-size:12px}
-.note{margin:0; font-size:11px; font-weight:500; color:var(--mute); line-height:1.5}
-input[type=range]{width:100%; accent-color:var(--ink)}
+/* 下からせり上がるシート */
+.shade{position:fixed; inset:0; z-index:6; cursor:pointer; background:rgba(16,16,18,.45); opacity:0; visibility:hidden; transition:opacity .25s, visibility 0s .25s}
+.shade.open{opacity:1; visibility:visible; transition:opacity .25s}
+.sheet{position:fixed; z-index:7; left:0; right:0; bottom:0; max-height:82%; display:flex; flex-direction:column;
+  background:var(--paper); border-top:3px solid var(--ink); transform:translateY(102%); visibility:hidden;
+  transition:transform .3s cubic-bezier(.2,.8,.2,1), visibility 0s .3s}
+@supports (height:100dvh){ .sheet{bottom:auto; top:100dvh; max-height:82dvh; transform:translateY(2%)} .sheet.open{transform:translateY(-100%)} }
+.sheet.open{visibility:visible; transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+@supports not (height:100dvh){ .sheet.open{transform:none} }
+.sheet-head{flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px max(16px,var(--sr)) 10px max(16px,var(--sl)); border-bottom:2px solid var(--ink)}
+.sheet-head h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:14px; letter-spacing:.16em}
+.sheet-body{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:18px;
+  padding:16px max(16px,var(--sr)) calc(max(16px,var(--sb)) + 28px) max(16px,var(--sl))}
+.grp{display:flex; flex-direction:column; gap:8px; min-width:0}
+.grp h3{margin:0; font-family:var(--font-d); font-weight:600; font-size:11px; letter-spacing:.14em}
+.seg{display:flex; flex-wrap:wrap; gap:8px}
+.seg.two > *{flex:1 1 0}
+.note{margin:0; font-size:12px; font-weight:500; color:var(--mute); line-height:1.5}
+input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
+@media (prefers-reduced-motion: reduce){ .card.in,.card.out,.sheet,.sheet.open,.shade,.shade.open{transition:none} }
 </style>
 
+</head>
+<body>
 <h1 class="sr" id="srtime">AR Clock</h1>
 <input type="file" id="file" class="sr" accept="image/*,video/*" tabindex="-1">
 
-<main class="stage" id="stage">
-  <canvas id="gl" aria-label="フィルタをかけたカメラ映像"></canvas>
-  <video id="vid" playsinline muted loop></video>
-  <div class="tag tl" id="tagPlace">AR CLOCK</div>
-  <div class="tag br" id="tagDate"></div>
-  <div class="tag bl" id="tagSrc">サンプル映像</div>
-  <div class="start" id="start">
-    <h2>AR CLOCK</h2>
-    <p>目の前の景色をマンガ調にして、10秒ごとに時刻を出す時計です。</p>
-    <button type="button" id="camStart" class="primary">カメラを起動</button>
-    <label class="btn" for="file">写真・動画を選ぶ</label>
-    <button type="button" id="demoStart">サンプル映像で見る</button>
-    <p class="err" id="msg" role="status"></p>
-  </div>
-</main>
+<div class="app">
+  <main class="stage" id="stage">
+    <canvas id="gl" aria-label="フィルタをかけたカメラ映像"></canvas>
+    <video id="vid" playsinline muted loop></video>
+    <div class="tag tl" id="tagPlace">AR CLOCK</div>
+    <div class="tag br" id="tagDate"></div>
+    <div class="tag bl" id="tagSrc">サンプル映像</div>
+    <div class="start" id="start">
+      <h2>AR CLOCK</h2>
+      <p>目の前の景色をマンガ調にして、10秒ごとに時刻を出す時計です。</p>
+      <button type="button" id="camStart" class="primary">カメラを起動</button>
+      <label class="btn" for="file">写真・動画を選ぶ</label>
+      <button type="button" id="demoStart">サンプル映像で見る</button>
+      <p class="err" id="msg" role="status"></p>
+    </div>
+  </main>
+</div>
 
 <div class="card" id="card">
   <div class="time" id="ctime">-- -- --</div>
@@ -91,10 +122,20 @@ input[type=range]{width:100%; accent-color:var(--ink)}
   <div class="sub dimmed" id="cmood"></div>
 </div>
 
-<footer class="bar" id="bar">
-  <div class="panel" id="panel" hidden>
+<button type="button" id="menu" aria-expanded="false" aria-controls="sheet">設定</button>
+<div class="shade" id="shade"></div>
+<section class="sheet" id="sheet" aria-label="設定">
+  <div class="sheet-head"><h2>設定</h2><button type="button" id="close">閉じる</button></div>
+  <div class="sheet-body">
     <div class="grp">
-      <h2>フィルタ</h2>
+      <h3>音</h3>
+      <div class="seg two">
+        <button type="button" id="play">▶ 音を鳴らす</button>
+        <button type="button" id="chime" aria-pressed="false">時報</button>
+      </div>
+    </div>
+    <div class="grp">
+      <h3>フィルタ</h3>
       <div class="seg" id="segFx">
         <button type="button" id="fx-manga" data-v="manga">マンガ</button>
         <button type="button" id="fx-both" data-v="both">マンガ＋グリッチ</button>
@@ -104,7 +145,7 @@ input[type=range]{width:100%; accent-color:var(--ink)}
       <p class="note">映像をタップすると、その場でグリッチが走ります。</p>
     </div>
     <div class="grp">
-      <h2>映像</h2>
+      <h3>映像</h3>
       <div class="seg" id="segSrc">
         <button type="button" id="src-env" data-v="environment">外側カメラ</button>
         <button type="button" id="src-user" data-v="user">内側カメラ</button>
@@ -112,7 +153,7 @@ input[type=range]{width:100%; accent-color:var(--ink)}
       </div>
     </div>
     <div class="grp">
-      <h2>音色</h2>
+      <h3>音色</h3>
       <div class="seg" id="segStyle">
         <button type="button" id="st-piano" data-v="piano">ピアノ</button>
         <button type="button" id="st-electro" data-v="electro">エレクトロ</button>
@@ -121,7 +162,7 @@ input[type=range]{width:100%; accent-color:var(--ink)}
       </div>
     </div>
     <div class="grp">
-      <h2>時間帯</h2>
+      <h3>時間帯</h3>
       <div class="seg" id="segMood">
         <button type="button" id="md-auto" data-v="auto">自動</button>
         <button type="button" id="md-morning" data-v="morning">朝</button>
@@ -132,16 +173,11 @@ input[type=range]{width:100%; accent-color:var(--ink)}
       <p class="note">自動にすると、朝は速く明るく、夜は遅くやわらかく変わります。</p>
     </div>
     <div class="grp">
-      <h2><label for="vol">音量</label></h2>
+      <h3><label for="vol">音量</label></h3>
       <input type="range" id="vol" min="0" max="1" step="0.01">
     </div>
   </div>
-  <div class="row" id="row">
-    <button type="button" id="play">▶ 音を鳴らす</button>
-    <button type="button" id="chime" aria-pressed="false">時報</button>
-    <button type="button" id="more" aria-expanded="false" aria-controls="panel">設定</button>
-  </div>
-</footer>
+</section>
 
 <script>
 (() => {
@@ -389,8 +425,8 @@ function beatPulse(){
   return Math.exp(-ph * 5);
 }
 
-/* ───────────── UI ───────────── */
-const elPlay = $('play'), elChime = $('chime'), elMore = $('more'), elPanel = $('panel'), elVol = $('vol');
+/* ───────────── UI：設定はシートにたたむ ───────────── */
+const sheet = $('sheet'), shade = $('shade'), elMenu = $('menu'), elPlay = $('play'), elChime = $('chime'), elVol = $('vol');
 function updateCaption(){
   const mood = currentMood(), M = MOODS[mood];
   const bpm = Math.round(M.bpm * STYLES[state.style].tempo);
@@ -403,19 +439,27 @@ function syncUI(){
   elChime.textContent = state.chime ? '時報 ON' : '時報 OFF';
   document.querySelectorAll('#segStyle button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.style ? 'true' : 'false'));
   document.querySelectorAll('#segMood button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.mood ? 'true' : 'false'));
-  
   updateCaption();
 }
+let sheetOpen = false, dimTimer = null;
+function wake(){
+  document.body.classList.remove('dim'); clearTimeout(dimTimer);
+  dimTimer = setTimeout(() => { if (!sheetOpen) document.body.classList.add('dim'); }, 5000);
+}
+function openSheet(o){
+  sheetOpen = o; sheet.classList.toggle('open', o); shade.classList.toggle('open', o);
+  elMenu.setAttribute('aria-expanded', o ? 'true' : 'false'); wake();
+}
+elMenu.addEventListener('click', () => openSheet(!sheetOpen));
+$('close').addEventListener('click', () => openSheet(false));
+shade.addEventListener('click', () => openSheet(false));
+addEventListener('keydown', ev => { if (ev.key === 'Escape') openSheet(false); });
 elVol.value = state.vol;
 elPlay.addEventListener('click', () => { A.playing ? stop() : play(); });
 elChime.addEventListener('click', () => {
   state.chime = !state.chime; store.set('chime', state.chime ? '1' : '0');
   if (state.chime && initAudio()) setTimeout(pong, 60);
   syncUI();
-});
-elMore.addEventListener('click', () => {
-  elPanel.hidden = !elPanel.hidden;
-  elMore.setAttribute('aria-expanded', elPanel.hidden ? 'false' : 'true');
 });
 $('segStyle').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
@@ -431,11 +475,6 @@ elVol.addEventListener('input', () => {
   state.vol = parseFloat(elVol.value); store.set('vol', String(state.vol));
   if (A.ctx) A.out.gain.setTargetAtTime(state.vol, A.ctx.currentTime, .03);
 });
-let dimTimer = null;
-function wake(){
-  document.body.classList.remove('dim'); clearTimeout(dimTimer);
-  dimTimer = setTimeout(() => { if (elPanel.hidden) document.body.classList.add('dim'); }, 6000);
-}
 ['pointerdown', 'keydown'].forEach(n => addEventListener(n, wake, { passive:true }));
 addEventListener('pointerdown', () => { if (state.chime) initAudio(); }, { passive:true });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && A.ctx && A.ctx.state === 'suspended' && (A.playing || state.chime)) A.ctx.resume(); });
@@ -663,10 +702,7 @@ function frame(ms){
   gl.uniform1f(U.u_lines, lines); gl.uniform1f(U.u_mirror, src.kind === 'camera' && src.mirror ? 1 : 0);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
-cv.addEventListener('pointerdown', () => {
-  if (!elPanel.hidden){ elPanel.hidden = true; elMore.setAttribute('aria-expanded', 'false'); }
-  burst = 1;
-});
+cv.addEventListener('pointerdown', () => { burst = 1; });
 cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); gl = null; });
 cv.addEventListener('webglcontextrestored', () => { initGL(); });
 document.addEventListener('visibilitychange', () => {
@@ -683,3 +719,5 @@ if (navigator.permissions && navigator.permissions.query) navigator.permissions.
 requestAnimationFrame(frame);
 })();
 </script>
+</body>
+</html>
