@@ -1,0 +1,685 @@
+<title>AR Clock</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+/* Layout: one manga panel filling the screen, showing the camera through a filter; every 10 seconds a flat time card wipes across. Controls sit in a quiet strip below the panel. Single black-and-white look by design. */
+:root{
+  --paper:#f6f4ee; --ink:#101012; --mute:#66666c;
+  --font-d:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --font-u:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--font-u); font-weight:700;
+  overflow:hidden; display:flex; flex-direction:column; gap:10px; padding-block:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%)}
+
+.stage{position:relative; flex:1 1 auto; min-height:0; border:3px solid var(--ink); background:var(--ink); overflow:hidden}
+#gl{position:absolute; inset:0; width:100%; height:100%; display:block}
+#vid{position:absolute; left:0; top:0; width:2px; height:2px; opacity:0; pointer-events:none}
+.tag{position:absolute; z-index:1; background:var(--paper); color:var(--ink); border:2px solid var(--ink); padding:3px 8px;
+  font-family:var(--font-d); font-weight:800; font-size:11px; letter-spacing:.16em; pointer-events:none; font-variant-numeric:tabular-nums}
+.tag.tl{left:8px; top:8px} .tag.br{right:8px; bottom:8px} .tag.bl{left:8px; bottom:8px; font-family:var(--font-u); letter-spacing:.06em}
+
+.start{position:absolute; z-index:2; left:50%; top:50%; transform:translate(-50%,-50%); width:min(300px,calc(100% - 32px));
+  background:var(--paper); border:3px solid var(--ink); box-shadow:6px 6px 0 var(--ink); padding:16px; display:flex; flex-direction:column; gap:10px}
+.start h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:20px; letter-spacing:.08em}
+.start p{margin:0; font-size:12px; font-weight:500; line-height:1.6}
+.start .err{color:var(--ink); font-weight:700}
+.start button, .start label.btn{width:100%; box-sizing:border-box; text-align:center}
+.start .primary{background:var(--ink); color:var(--paper)}
+
+.card{position:fixed; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+  background:var(--paper); color:var(--ink); pointer-events:none; padding-inline:16px; text-align:center;
+  -webkit-clip-path:inset(0 100% 0 0); clip-path:inset(0 100% 0 0)}
+.card.inv{background:var(--ink); color:var(--paper)}
+.card.in{-webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
+.card.out{-webkit-clip-path:inset(0 0 0 100%); clip-path:inset(0 0 0 100%); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
+@media (prefers-reduced-motion: reduce){ .card.in,.card.out{transition:none} }
+.time{font-family:var(--font-d); font-weight:800; font-size:clamp(36px,10vw,68px); letter-spacing:.07em; line-height:1; font-variant-numeric:tabular-nums}
+.sub{font-family:var(--font-d); font-weight:600; font-size:11px; letter-spacing:.3em; text-indent:.3em}
+.sub.dimmed{opacity:.55; letter-spacing:.2em}
+
+.bar{position:relative; z-index:4; flex:0 0 auto}
+.row{display:flex; gap:8px; flex-wrap:wrap}
+.dim .row button{opacity:.35}
+button, label.btn{
+  font:inherit; font-size:13px; color:var(--ink); background:var(--paper);
+  border:2px solid var(--ink); border-radius:0; padding:8px 12px; min-height:40px; cursor:pointer;
+  transition:opacity .6s; display:inline-flex; align-items:center; justify-content:center;
+}
+button[aria-pressed="true"]{background:var(--ink); color:var(--paper)}
+button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px dashed var(--ink); outline-offset:3px}
+#play{flex:1 1 auto}
+
+.panel{position:absolute; left:0; right:0; bottom:calc(100% + 10px); background:var(--paper); max-height:calc(100vh - 150px); overflow-y:auto;
+  border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink); padding:12px; display:flex; flex-direction:column; gap:12px}
+.grp{display:flex; flex-direction:column; gap:6px; min-width:0}
+.grp h2{margin:0; font-family:var(--font-d); font-weight:600; font-size:11px; letter-spacing:.14em}
+.seg{display:flex; flex-wrap:wrap; gap:6px}
+.seg button, .seg label.btn{padding:6px 10px; min-height:36px; font-size:12px}
+.note{margin:0; font-size:11px; font-weight:500; color:var(--mute); line-height:1.5}
+input[type=range]{width:100%; accent-color:var(--ink)}
+</style>
+
+<h1 class="sr" id="srtime">AR Clock</h1>
+<input type="file" id="file" class="sr" accept="image/*,video/*" tabindex="-1">
+
+<main class="stage" id="stage">
+  <canvas id="gl" aria-label="フィルタをかけたカメラ映像"></canvas>
+  <video id="vid" playsinline muted loop></video>
+  <div class="tag tl" id="tagPlace">AR CLOCK</div>
+  <div class="tag br" id="tagDate"></div>
+  <div class="tag bl" id="tagSrc">サンプル映像</div>
+  <div class="start" id="start">
+    <h2>AR CLOCK</h2>
+    <p>目の前の景色をマンガ調にして、10秒ごとに時刻を出す時計です。</p>
+    <button type="button" id="camStart" class="primary">カメラを起動</button>
+    <label class="btn" for="file">写真・動画を選ぶ</label>
+    <button type="button" id="demoStart">サンプル映像で見る</button>
+    <p class="err" id="msg" role="status"></p>
+  </div>
+</main>
+
+<div class="card" id="card">
+  <div class="time" id="ctime">-- -- --</div>
+  <div class="sub" id="csub"></div>
+  <div class="sub dimmed" id="cmood"></div>
+</div>
+
+<footer class="bar" id="bar">
+  <div class="panel" id="panel" hidden>
+    <div class="grp">
+      <h2>フィルタ</h2>
+      <div class="seg" id="segFx">
+        <button type="button" id="fx-manga" data-v="manga">マンガ</button>
+        <button type="button" id="fx-both" data-v="both">マンガ＋グリッチ</button>
+        <button type="button" id="fx-glitch" data-v="glitch">グリッチ</button>
+        <button type="button" id="fx-mono" data-v="mono">モノクロ</button>
+      </div>
+      <p class="note">映像をタップすると、その場でグリッチが走ります。</p>
+    </div>
+    <div class="grp">
+      <h2>映像</h2>
+      <div class="seg" id="segSrc">
+        <button type="button" id="src-env" data-v="environment">外側カメラ</button>
+        <button type="button" id="src-user" data-v="user">内側カメラ</button>
+        <label class="btn" for="file">写真・動画を選ぶ</label>
+      </div>
+    </div>
+    <div class="grp">
+      <h2>音色</h2>
+      <div class="seg" id="segStyle">
+        <button type="button" id="st-piano" data-v="piano">ピアノ</button>
+        <button type="button" id="st-electro" data-v="electro">エレクトロ</button>
+        <button type="button" id="st-musicbox" data-v="musicbox">オルゴール</button>
+        <button type="button" id="st-lofi" data-v="lofi">ローファイ</button>
+      </div>
+    </div>
+    <div class="grp">
+      <h2>時間帯</h2>
+      <div class="seg" id="segMood">
+        <button type="button" id="md-auto" data-v="auto">自動</button>
+        <button type="button" id="md-morning" data-v="morning">朝</button>
+        <button type="button" id="md-day" data-v="day">昼</button>
+        <button type="button" id="md-evening" data-v="evening">夕</button>
+        <button type="button" id="md-night" data-v="night">夜</button>
+      </div>
+      <p class="note">自動にすると、朝は速く明るく、夜は遅くやわらかく変わります。</p>
+    </div>
+    <div class="grp">
+      <h2><label for="vol">音量</label></h2>
+      <input type="range" id="vol" min="0" max="1" step="0.01">
+    </div>
+  </div>
+  <div class="row" id="row">
+    <button type="button" id="play">▶ 音を鳴らす</button>
+    <button type="button" id="chime" aria-pressed="false">時報</button>
+    <button type="button" id="more" aria-expanded="false" aria-controls="panel">設定</button>
+  </div>
+</footer>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('arclock.' + k); return v === null ? d : v; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('arclock.' + k, v); }catch(e){} }
+};
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const pick = a => a[Math.random() * a.length | 0];
+
+const state = {
+  style: store.get('style', 'piano'),
+  mood: store.get('mood', 'auto'),
+  chime: store.get('chime', '1') === '1',
+  vol: Math.min(1, Math.max(0, parseFloat(store.get('vol', '0.7')) || 0))
+};
+
+/* ───────────── 音：その場で生成するエンドレスBGM ───────────── */
+const MOODS = {
+  morning:{ label:'MORNING', key:62, bpm:126, cut:11000, drums:2, oct:12, send:.16,
+    prog:[[0,'M'],[7,'M'],[9,'m7'],[5,'M7'],[0,'M'],[4,'m7'],[5,'M7'],[7,'sus']] },
+  day:{ label:'DAYTIME', key:55, bpm:118, cut:8500, drums:2, oct:12, send:.18,
+    prog:[[5,'M7'],[7,'M'],[4,'m7'],[9,'m'],[5,'M7'],[7,'M'],[0,'M'],[0,'M7']] },
+  evening:{ label:'EVENING', key:60, bpm:100, cut:4200, drums:1, oct:0, send:.24,
+    prog:[[9,'m7'],[5,'M7'],[0,'M7'],[7,'M'],[9,'m7'],[5,'M7'],[2,'m7'],[7,'sus']] },
+  night:{ label:'NIGHT', key:63, bpm:76, cut:1900, drums:0, oct:0, send:.32,
+    prog:[[0,'M7'],[9,'m7'],[5,'M7'],[7,'sus'],[2,'m7'],[7,'7'],[0,'M7'],[0,'M7']] }
+};
+const STYLES = {
+  piano:{ label:'ピアノ', tempo:1 }, electro:{ label:'エレクトロ', tempo:1.04 },
+  musicbox:{ label:'オルゴール', tempo:.8 }, lofi:{ label:'ローファイ', tempo:.82 }
+};
+if (!STYLES[state.style]) state.style = 'piano';
+if (state.mood !== 'auto' && !MOODS[state.mood]) state.mood = 'auto';
+const CH = { M:[0,4,7], m:[0,3,7], M7:[0,4,7,11], m7:[0,3,7,10], sus:[0,5,7], '7':[0,4,7,10] };
+const PENTA = [0,2,4,7,9,12,14,16,19,21];
+const ARPS = [
+  [0,1,2,3,2,1,2,3,0,1,2,4,2,1,2,3],
+  [0,2,1,3,2,4,3,2,0,2,1,3,2,4,5,4],
+  [0,1,2,0,1,2,3,1,2,3,4,2,3,2,1,0],
+  [3,2,1,0,3,2,1,0,4,3,2,1,4,3,2,1]
+];
+const STABS = ['x..x..x.x..x..x.', 'x.x...x.x.x...x.', 'x..x.x..x..x.x..', '..x...x...x..x..'];
+
+const autoMood = h => h >= 5 && h < 10 ? 'morning' : h < 17 && h >= 10 ? 'day' : h >= 17 && h < 22 ? 'evening' : 'night';
+const currentMood = () => state.mood === 'auto' ? autoMood(new Date().getHours()) : state.mood;
+const mf = m => 440 * Math.pow(2, (m - 69) / 12);
+
+const A = { ctx:null, playing:false, timer:null };
+const S = { step:0, bar:0, next:0, P:null, motif:null, beatRef:0, dirty:true };
+
+function initAudio(){
+  if (A.ctx){ if (A.ctx.state === 'suspended') A.ctx.resume(); return true; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  const c = A.ctx = new AC();
+  A.out = c.createGain(); A.out.gain.value = state.vol;
+  A.comp = c.createDynamicsCompressor(); A.comp.threshold.value = -14; A.comp.ratio.value = 4;
+  A.comp.connect(A.out); A.out.connect(c.destination);
+  A.music = c.createGain(); A.music.gain.value = 0;
+  A.lp = c.createBiquadFilter(); A.lp.type = 'lowpass'; A.lp.frequency.value = 8000; A.lp.Q.value = .3;
+  A.music.connect(A.lp); A.lp.connect(A.comp);
+  A.send = c.createGain(); A.send.gain.value = .2;
+  A.delay = c.createDelay(1.5); A.delay.delayTime.value = .38;
+  A.fb = c.createGain(); A.fb.gain.value = .34;
+  A.dlp = c.createBiquadFilter(); A.dlp.type = 'lowpass'; A.dlp.frequency.value = 2400;
+  A.send.connect(A.delay); A.delay.connect(A.dlp); A.dlp.connect(A.fb); A.fb.connect(A.delay); A.dlp.connect(A.music);
+  const n = c.sampleRate, buf = c.createBuffer(1, n, n), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  A.nbuf = buf;
+  A.chime = c.createGain(); A.chime.gain.value = .9; A.chime.connect(A.comp);
+  return true;
+}
+function osc(type, f, t, a, d, peak, wet, dest){
+  const c = A.ctx, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(peak, .0002), t + a);
+  g.gain.exponentialRampToValueAtTime(.0001, t + a + d);
+  o.connect(g); g.connect(dest || A.music); if (wet) g.connect(A.send);
+  o.start(t); o.stop(t + a + d + .05);
+}
+function noise(t, d, v, type, freq, q){
+  const c = A.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = A.nbuf; f.type = type; f.frequency.value = freq; f.Q.value = q || .7;
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  s.connect(f); f.connect(g); g.connect(A.music);
+  s.start(t, Math.random() * .5); s.stop(t + d + .02);
+}
+function kick(t, v){
+  const c = A.ctx, o = c.createOscillator(), g = c.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(46, t + .11);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + .3);
+  o.connect(g); g.connect(A.music); o.start(t); o.stop(t + .32);
+}
+const hat = (t, v) => noise(t, .035, v, 'highpass', 7500);
+const rim = (t, v) => { noise(t, .03, v, 'bandpass', 2200, 3); osc('triangle', 900, t, .001, .03, v * .5); };
+const clap = (t, v) => noise(t, .11, v, 'bandpass', 1500, 1.2);
+const snare = (t, v) => { noise(t, .14, v, 'bandpass', 1900, .8); osc('triangle', 190, t, .001, .08, v * .6); };
+const bass = (m, t, v, d) => { const f = mf(m); osc('triangle', f, t, .008, d, v); osc('sine', f, t, .008, d, v * .6); };
+const piano = (m, t, v, d) => { const f = mf(m); osc('triangle', f, t, .004, d, v, true); osc('sine', f * 2, t, .004, d * .4, v * .3); osc('sine', f * 1.004, t, .004, d, v * .5); };
+const bell = (m, t, v) => { const f = mf(m); osc('sine', f, t, .003, 1.6, v, true); osc('sine', f * 3.01, t, .003, .35, v * .22); osc('sine', f * 5.4, t, .002, .12, v * .1); };
+function pluck(m, t, v){
+  const c = A.ctx, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
+  o.type = 'sawtooth'; o.frequency.value = mf(m); f.type = 'lowpass'; f.Q.value = 4;
+  f.frequency.setValueAtTime(2600, t); f.frequency.exponentialRampToValueAtTime(350, t + .18);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + .22);
+  o.connect(f); f.connect(g); g.connect(A.music); g.connect(A.send); o.start(t); o.stop(t + .25);
+}
+function epiano(m, t, v, d){
+  const c = A.ctx, f = mf(m), car = c.createOscillator(), mod = c.createOscillator(), mg = c.createGain(), g = c.createGain();
+  car.frequency.value = f; mod.frequency.value = f;
+  mg.gain.setValueAtTime(f * 1.6, t); mg.gain.exponentialRampToValueAtTime(f * .15, t + .5);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  mod.connect(mg); mg.connect(car.frequency); car.connect(g); g.connect(A.music); g.connect(A.send);
+  car.start(t); mod.start(t); car.stop(t + d + .05); mod.stop(t + d + .05);
+}
+
+function newMotif(){
+  const r = [], c = []; let i = 2 + (Math.random() * 3 | 0);
+  for (let k = 0; k < 8; k++){
+    r.push(k === 0 || Math.random() < .6);
+    i = Math.max(0, Math.min(7, i + pick([-2,-1,-1,0,1,1,2])));
+    c.push(i);
+  }
+  S.motif = { r, c, arp:pick(ARPS), stab:pick(STABS), fill:Math.random() < .5 };
+}
+function mutateMotif(){
+  const M = S.motif;
+  for (let n = 0; n < 2; n++){
+    const k = 1 + (Math.random() * 7 | 0);
+    M.r[k] = Math.random() < .6;
+    M.c[k] = Math.max(0, Math.min(7, M.c[k] + pick([-1, 1, 2, -2])));
+  }
+  if (Math.random() < .4) M.stab = pick(STABS);
+  if (Math.random() < .4) M.arp = pick(ARPS);
+  M.fill = Math.random() < .5;
+}
+function params(){
+  const mood = currentMood(), M = MOODS[mood];
+  return { mood, style:state.style, key:M.key, bpm:Math.round(M.bpm * STYLES[state.style].tempo),
+    cut:M.cut, drums:M.drums, oct:M.oct, send:M.send, prog:M.prog };
+}
+function applyParams(t){
+  const np = params(), old = S.P;
+  S.P = np; S.beatRef = t; S.dirty = false;
+  A.lp.frequency.setTargetAtTime(np.cut, t, .25);
+  A.send.gain.setTargetAtTime(np.send, t, .25);
+  A.delay.delayTime.setTargetAtTime(60 / np.bpm * .75, t, .2);
+  if (!old || old.style !== np.style || !S.motif) newMotif();
+  updateCaption();
+}
+function scheduleStep(s, t){
+  const P = S.P, M = S.motif, ch = P.prog[S.bar % P.prog.length], root = P.key + ch[0], tones = CH[ch[1]];
+  const sd = 60 / P.bpm / 4, e = s % 2 === 0, q = s % 4 === 0, h = s >> 1;
+  const voice = n => { n += root; while (n > P.key + 8) n -= 12; while (n < P.key - 5) n += 12; return n; };
+  let b = root - 12; while (b > 50) b -= 12;
+  const ci = S.bar % 4 === 3 ? M.c[7 - h] : M.c[h];
+  const mel = i => P.key + P.oct + PENTA[i];
+  const D = P.drums;
+
+  if (P.style === 'piano'){
+    if (s === 0) bass(b, t, .26, .5);
+    if (s === 8 && D > 0) bass(b, t, .18, .35);
+    if (s === 14 && D > 1) bass(b + 7, t, .14, .2);
+    if (M.stab[s] === 'x') tones.forEach(n => piano(voice(n), t, .055, .45));
+    if (e && M.r[h]) piano(mel(ci), t, .15, D ? .7 : 1.4);
+    if (D > 1){ if (q) kick(t, .5); if (s % 4 === 2) hat(t, .05); if (s === 4 || s === 12) rim(t, .12); }
+    else if (D === 1){ if (s === 0 || s === 8) kick(t, .35); if (s === 12) rim(t, .08); if (s % 4 === 2) hat(t, .025); }
+  } else if (P.style === 'electro'){
+    if (D > 0 || e){
+      const ai = M.arp[s], n = tones[ai % tones.length] + 12 * Math.floor(ai / tones.length);
+      pluck(voice(0) + n, t, .085);
+    }
+    if (D > 0){ if (s % 4 === 2) bass(b, t, .22, .18); } else if (s === 0) bass(b, t, .24, .9);
+    if (D > 1){ if (q) kick(t, .55); if (s % 4 === 2) hat(t, .06); else if (s % 2 === 1) hat(t, .02); if (s === 4 || s === 12) clap(t, .14); }
+    else if (D === 1){ if (q) kick(t, .4); if (s % 4 === 2) hat(t, .04); }
+    else if (s === 0 || s === 8) kick(t, .3);
+    if (e && M.r[h] && S.bar % 2 === 1) osc('square', mf(mel(ci)), t, .005, .18, .03, true);
+  } else if (P.style === 'musicbox'){
+    if (e && M.r[h]) bell(mel(ci) + (P.oct ? 0 : 12), t, .13);
+    if (s === 0) bell(b + 24, t, .1);
+    if (s === 8) bell(voice(tones[1]), t, .07);
+    if (s === 4 || s === 12) bell(voice(tones[2]), t, .05);
+  } else {
+    const tt = t + (s % 2 === 1 ? sd * .3 : 0);
+    if (s === 0) tones.forEach((n, i) => epiano(voice(n), t + i * .012, .07, 1.8));
+    if (s === 10 && M.fill) tones.forEach(n => epiano(voice(n), tt, .04, .9));
+    if (s === 0) bass(b, t, .28, .5);
+    if (s === 10) bass(b, t, .2, .3);
+    if (s === 14 && M.fill) bass(b + 7, t, .14, .2);
+    if (s === 0 || s === 10) kick(t, D ? .5 : .3);
+    if (s === 4 || s === 12) snare(t, D ? .12 : .06);
+    if (e) hat(t, D ? .035 : .018); else if (Math.random() < .3) hat(tt, .015);
+    if (e && M.r[h] && S.bar % 2 === 1) epiano(mel(ci) + (P.oct ? 0 : 12), t, .06, .8);
+    if (Math.random() < .25) noise(t + Math.random() * sd, .01, .02, 'highpass', 5000);
+  }
+}
+function tick(){
+  const c = A.ctx; if (!c || !A.playing) return;
+  if (S.next < c.currentTime) S.next = c.currentTime + .06;
+  while (S.next < c.currentTime + .18){
+    if (S.dirty && S.step % 4 === 0){ S.step = 0; applyParams(S.next); }
+    scheduleStep(S.step, S.next);
+    S.next += 60 / S.P.bpm / 4;
+    if (++S.step === 16){
+      S.step = 0; S.bar++;
+      if (S.bar % 8 === 0){ if (Math.random() < .5) mutateMotif(); else newMotif(); }
+    }
+  }
+}
+function play(){
+  if (!initAudio()) return;
+  const c = A.ctx;
+  A.playing = true; S.step = 0; S.bar = 0; S.next = c.currentTime + .08; S.dirty = true;
+  A.music.gain.cancelScheduledValues(c.currentTime); A.music.gain.setTargetAtTime(1, c.currentTime, .05);
+  clearInterval(A.timer); A.timer = setInterval(tick, 25); tick();
+  if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(w => { A.wake = w; }).catch(() => {});
+  syncUI();
+}
+function stop(){
+  if (!A.ctx) return;
+  A.playing = false; clearInterval(A.timer);
+  A.music.gain.setTargetAtTime(0, A.ctx.currentTime, .08);
+  if (A.wake){ try{ A.wake.release(); }catch(e){} A.wake = null; }
+  syncUI();
+}
+function pip(f, d, v){
+  if (!A.ctx || A.ctx.state !== 'running') return;
+  osc('sine', f, A.ctx.currentTime + .02, .005, d, v, false, A.chime);
+}
+function pong(){
+  if (!A.ctx || A.ctx.state !== 'running') return;
+  const t = A.ctx.currentTime + .02;
+  osc('sine', 880, t, .005, 2.2, .5, false, A.chime);
+  osc('sine', 1760, t, .005, .6, .07, false, A.chime);
+}
+function beatPulse(){
+  let ph;
+  if (A.playing && S.P && A.ctx) ph = (A.ctx.currentTime - S.beatRef) * S.P.bpm / 60;
+  else ph = Date.now() / 1000;
+  ph = ((ph % 1) + 1) % 1;
+  return Math.exp(-ph * 5);
+}
+
+/* ───────────── UI ───────────── */
+const elPlay = $('play'), elChime = $('chime'), elMore = $('more'), elPanel = $('panel'), elVol = $('vol');
+function updateCaption(){
+  const mood = currentMood(), M = MOODS[mood];
+  const bpm = Math.round(M.bpm * STYLES[state.style].tempo);
+  $('cmood').textContent = A.playing ? M.label + ' · ' + bpm + ' BPM' : M.label;
+}
+function syncUI(){
+  elPlay.textContent = A.playing ? '■ 音を止める' : '▶ 音を鳴らす';
+  elPlay.setAttribute('aria-pressed', A.playing ? 'true' : 'false');
+  elChime.setAttribute('aria-pressed', state.chime ? 'true' : 'false');
+  elChime.textContent = state.chime ? '時報 ON' : '時報 OFF';
+  document.querySelectorAll('#segStyle button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.style ? 'true' : 'false'));
+  document.querySelectorAll('#segMood button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.mood ? 'true' : 'false'));
+  
+  updateCaption();
+}
+elVol.value = state.vol;
+elPlay.addEventListener('click', () => { A.playing ? stop() : play(); });
+elChime.addEventListener('click', () => {
+  state.chime = !state.chime; store.set('chime', state.chime ? '1' : '0');
+  if (state.chime && initAudio()) setTimeout(pong, 60);
+  syncUI();
+});
+elMore.addEventListener('click', () => {
+  elPanel.hidden = !elPanel.hidden;
+  elMore.setAttribute('aria-expanded', elPanel.hidden ? 'false' : 'true');
+});
+$('segStyle').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  state.style = b.dataset.v; store.set('style', state.style); S.dirty = true;
+  if (!A.playing) play(); else syncUI();
+});
+$('segMood').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  state.mood = b.dataset.v; store.set('mood', state.mood); S.dirty = true;
+  if (!A.playing) play(); else syncUI();
+});
+elVol.addEventListener('input', () => {
+  state.vol = parseFloat(elVol.value); store.set('vol', String(state.vol));
+  if (A.ctx) A.out.gain.setTargetAtTime(state.vol, A.ctx.currentTime, .03);
+});
+let dimTimer = null;
+function wake(){
+  document.body.classList.remove('dim'); clearTimeout(dimTimer);
+  dimTimer = setTimeout(() => { if (elPanel.hidden) document.body.classList.add('dim'); }, 6000);
+}
+['pointerdown', 'keydown'].forEach(n => addEventListener(n, wake, { passive:true }));
+addEventListener('pointerdown', () => { if (state.chime) initAudio(); }, { passive:true });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && A.ctx && A.ctx.state === 'suspended' && (A.playing || state.chime)) A.ctx.resume(); });
+
+/* ───────────── 映像ソース：カメラ / 選んだ写真・動画 / サンプル映像 ───────────── */
+const stage = $('stage'), cv = $('gl'), video = $('vid'), startBox = $('start'), msg = $('msg'), fileIn = $('file');
+const demo = document.createElement('canvas'); demo.width = 640; demo.height = 360;
+const DX = demo.getContext('2d'), still = document.createElement('canvas');
+let src = { kind:'demo' }, stream = null, stillDirty = false, running = false, wakeLock = null;
+let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environment';
+let fx = store.get('fx', 'manga'); if (!['manga', 'both', 'glitch', 'mono'].includes(fx)) fx = 'manga';
+
+function drawDemo(t){
+  const c = DX, g = c.createLinearGradient(0, 0, 0, 360);
+  g.addColorStop(0, '#dfe6ee'); g.addColorStop(.6, '#f4efe4'); g.addColorStop(1, '#8d8a84');
+  c.fillStyle = g; c.fillRect(0, 0, 640, 360);
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(500 + Math.sin(t * .2) * 30, 80, 38, 0, 6.2832); c.fill();
+  for (let i = 0; i < 3; i++){ const x = ((t * (12 + i * 7) + i * 260) % 860) - 110, y = 50 + i * 34; c.fillStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.ellipse(x, y, 60, 14, 0, 0, 6.2832); c.ellipse(x + 30, y - 10, 34, 14, 0, 0, 6.2832); c.fill(); }
+  for (let i = 0; i < 9; i++){
+    const w = 52 + (i * 37 % 40), h = 90 + (i * 71 % 130), x = i * 74 - 10, sh = 40 + (i * 53 % 120);
+    c.fillStyle = 'rgb(' + sh + ',' + sh + ',' + (sh + 8) + ')'; c.fillRect(x, 300 - h, w, h);
+    c.fillStyle = 'rgba(255,255,240,.85)';
+    for (let yy = 300 - h + 10; yy < 290; yy += 16) for (let xx = x + 7; xx < x + w - 8; xx += 13) if ((xx * 7 + yy * 3 + i) % 5 > 1) c.fillRect(xx, yy, 6, 8);
+  }
+  c.fillStyle = '#3a3a3c'; c.fillRect(0, 300, 640, 60);
+  c.fillStyle = '#e8e8e2'; for (let x = -((t * 120) % 80); x < 640; x += 80) c.fillRect(x, 327, 40, 5);
+  const bx = ((t * 90) % 800) - 80, by = 292 - Math.abs(Math.sin(t * 3.2)) * 70;
+  c.fillStyle = '#111'; c.beginPath(); c.arc(bx, by, 22, 0, 6.2832); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(bx - 7, by - 7, 6, 0, 6.2832); c.fill();
+  c.save(); c.translate(120, 150); c.rotate(t * .7); c.fillStyle = '#c9c4ba'; c.fillRect(-34, -34, 68, 68); c.fillStyle = '#222'; c.fillRect(-34, -6, 68, 12); c.restore();
+}
+function stopStream(){ if (stream){ stream.getTracks().forEach(tr => tr.stop()); stream = null; } }
+function begin(){
+  startBox.hidden = true; msg.textContent = '';
+  if (!running){ running = true; sceneT0 = performance.now() / 1000; }
+  if (navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
+  syncSrc();
+}
+function fail(text){ msg.textContent = text; startBox.hidden = false; src = { kind:'demo' }; syncSrc(); }
+async function startCamera(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ fail('このブラウザではカメラを使えません。写真・動画を選ぶと試せます。'); return; }
+  stopStream();
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:facing }, width:{ ideal:1280 }, height:{ ideal:720 } } });
+  }catch(e){
+    const n = e && e.name;
+    fail(n === 'NotAllowedError' || n === 'SecurityError' ? 'カメラが許可されていません。ブラウザの設定で許可してください。許可できない表示環境では、写真・動画を選ぶと試せます。'
+      : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'カメラが見つかりません。写真・動画を選ぶと試せます。'
+      : 'カメラを起動できませんでした。ほかのアプリがカメラを使っていないか確認してください。');
+    return;
+  }
+  video.removeAttribute('src'); video.srcObject = stream;
+  try{ await video.play(); }catch(e){}
+  const st = stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings ? stream.getVideoTracks()[0].getSettings() : {};
+  src = { kind:'camera', mirror:(st.facingMode || facing) === 'user' };
+  store.set('facing', facing); begin();
+}
+fileIn.addEventListener('change', () => {
+  const f = fileIn.files && fileIn.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  if (f.type.startsWith('video/')){
+    stopStream(); video.srcObject = null; video.src = url; video.loop = true; video.muted = true;
+    video.play().catch(() => {}); src = { kind:'file' }; begin();
+  } else {
+    const im = new Image();
+    im.onload = () => {
+      stopStream(); const k = Math.min(1, 1600 / Math.max(im.naturalWidth, im.naturalHeight));
+      still.width = Math.round(im.naturalWidth * k); still.height = Math.round(im.naturalHeight * k);
+      still.getContext('2d').drawImage(im, 0, 0, still.width, still.height);
+      stillDirty = true; src = { kind:'image' }; URL.revokeObjectURL(url); begin();
+    };
+    im.onerror = () => fail('このファイルは読み込めませんでした。別の写真か動画を選んでください。');
+    im.src = url;
+  }
+  fileIn.value = '';
+});
+$('camStart').addEventListener('click', startCamera);
+$('demoStart').addEventListener('click', () => { src = { kind:'demo' }; begin(); });
+$('segSrc').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; facing = b.dataset.v; startCamera(); });
+$('segFx').addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; fx = b.dataset.v; store.set('fx', fx); burst = Math.max(burst, .7); syncSrc(); });
+function syncSrc(){
+  $('tagSrc').hidden = src.kind !== 'demo';
+  document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', src.kind === 'camera' && b.dataset.v === facing ? 'true' : 'false'));
+  document.querySelectorAll('#segFx button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === fx ? 'true' : 'false'));
+}
+
+/* ───────────── WebGL フィルタ：マンガ調（網点＋輪郭線）とグリッチ ───────────── */
+const VS = 'attribute vec2 a_pos;void main(){gl_Position=vec4(a_pos,0.,1.);}';
+const FS = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n' + `
+uniform sampler2D u_tex; uniform vec2 u_res,u_src; uniform float u_t,u_dpr,u_manga,u_glitch,u_burst,u_lines,u_mirror;
+uniform vec3 u_paper,u_ink;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+vec2 cover(vec2 uv){
+  float ra=u_res.x/u_res.y, rs=u_src.x/u_src.y;
+  vec2 s=ra>rs?vec2(1.,rs/ra):vec2(ra/rs,1.);
+  uv=(uv-.5)*s+.5;
+  if(u_mirror>.5) uv.x=1.-uv.x;
+  return uv;
+}
+float lum(vec2 uv){return dot(texture2D(u_tex,cover(uv)).rgb,vec3(.299,.587,.114));}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_res, px=gl_FragCoord.xy/u_dpr;
+  float g=u_glitch, b=u_burst, tt=floor(u_t*14.);
+  if(g>0.){
+    float band=floor(uv.y*mix(16.,56.,hash(vec2(tt,3.))));
+    if(hash(vec2(band,tt))>1.-(.03+b*.45)) uv.x+=(hash(vec2(band,tt+7.))-.5)*(.07+b*.25);
+    vec2 blk=floor(uv*vec2(7.,10.));
+    if(hash(blk+tt*1.3)>1.-b*.26) uv+=(vec2(hash(blk+1.),hash(blk+2.))-.5)*.2;
+    uv.x+=sin(uv.y*90.+u_t*30.)*.0012*(1.+b*6.);
+  }
+  float sh=g*(.004+b*.03)*(.7+.3*sin(u_t*3.));
+  float lr=lum(uv+vec2(sh,0.)), lg=lum(uv), lb=lum(uv-vec2(sh,0.));
+  vec3 col;
+  if(u_manga>.5){
+    vec2 e=1.5*u_dpr/u_res;
+    float tl=lum(uv+vec2(-e.x,e.y)), tc=lum(uv+vec2(0.,e.y)), tr=lum(uv+e);
+    float ml=lum(uv+vec2(-e.x,0.)), mr=lum(uv+vec2(e.x,0.));
+    float bl=lum(uv-e), bc=lum(uv+vec2(0.,-e.y)), br=lum(uv+vec2(e.x,-e.y));
+    float gx=-tl-2.*ml-bl+tr+2.*mr+br, gy=-tl-2.*tc-tr+bl+2.*bc+br;
+    float edge=smoothstep(.2,.52,length(vec2(gx,gy)));
+    float dark=1.-smoothstep(.08,.92,lg);
+    float cs=5.;
+    vec2 f=fract(mat2(.7071,.7071,-.7071,.7071)*px/cs)-.5;
+    float r=sqrt(clamp((dark-.3)/.46,0.,1.))*.64, aa=.8/(cs*u_dpr);
+    float dots=smoothstep(r+aa,r-aa,length(f))*step(.02,r);
+    float ink=max(max(dots,smoothstep(.74,.82,dark)),edge);
+    col=mix(u_paper,u_ink,ink);
+    float d=(lr-lb)*g; col+=vec3(d,-abs(d)*.3,-d)*1.4;
+  } else {
+    col=smoothstep(vec3(.04),vec3(.96),vec3(lr,lg,lb));
+    col=mix(u_ink,u_paper,col);
+    col*=1.-g*.12*(.5+.5*sin(px.y*3.1416));
+  }
+  if(g>0. && hash(vec2(floor(uv.y*9.),tt+11.))>1.-b*.16) col=1.-col;
+  if(u_lines>.001){
+    vec2 c=px-u_res/u_dpr*.5; float a=atan(c.y,c.x)/6.2832*72.;
+    float h=hash(vec2(floor(a),3.)), w=abs(fract(a)-.5);
+    float R=(.3+.5*h)*max(u_res.x,u_res.y)/u_dpr*.5*(1.6-min(u_lines,1.));
+    col=mix(col,u_ink,step(w,.1+.3*h*h)*smoothstep(R,R+60.,length(c))*step(.35,h)*min(u_lines*2.,1.));
+  }
+  col+=(hash(px+fract(u_t)*91.)-.5)*.05;
+  gl_FragColor=vec4(col,1.);
+}`;
+let gl = null, U = {}, tex = null, W = 0, H = 0, dpr = 1, srcW = 640, srcH = 360;
+function initGL(){
+  try{
+    gl = cv.getContext('webgl', { alpha:false, antialias:false }) || cv.getContext('experimental-webgl', { alpha:false });
+    if (!gl) return false;
+    const sh = (type, s) => { const o = gl.createShader(type); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+    const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
+    gl.bindAttribLocation(p, 0, 'a_pos'); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    gl.useProgram(p);
+    ['u_tex', 'u_res', 'u_src', 'u_t', 'u_dpr', 'u_manga', 'u_glitch', 'u_burst', 'u_lines', 'u_mirror', 'u_paper', 'u_ink'].forEach(n => { U[n] = gl.getUniformLocation(p, n); });
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.uniform1i(U.u_tex, 0); gl.uniform3f(U.u_paper, .965, .957, .933); gl.uniform3f(U.u_ink, .063, .063, .071);
+    stillDirty = true;
+    return true;
+  }catch(e){ console.error(e); gl = null; return false; }
+}
+function layout(){
+  W = cv.clientWidth || 1; H = cv.clientHeight || 1; dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.round(W * dpr), h = Math.round(H * dpr);
+  if (cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+}
+function upload(t){
+  let el = demo, w = 640, h = 360;
+  if ((src.kind === 'camera' || src.kind === 'file') && video.readyState >= 2 && video.videoWidth){ el = video; w = video.videoWidth; h = video.videoHeight; }
+  else if (src.kind === 'image'){ if (!stillDirty) return; stillDirty = false; el = still; w = still.width; h = still.height; }
+  if (el === demo) drawDemo(t);
+  try{ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, el); srcW = w; srcH = h; }catch(e){}
+}
+
+/* ───────────── 進行：映像10秒 → 時刻カード → 映像 ───────────── */
+const SC_LEN = 10, CARD_LEN = 4, WIPE = .55;
+const card = $('card');
+let sceneT0 = 0, cardT0 = null, opening = false, burst = 0, lines = 0, lastT = 0, hold = false;
+const p2 = n => (n < 10 ? '0' : '') + n, WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+let lastSec = -1, lastMin = -1, lastHour = -1, place = '';
+try{ place = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/').pop().replace(/_/g, ' ').toUpperCase(); }catch(e){}
+if (place) $('tagPlace').textContent = place;
+function tickClock(){
+  const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
+  lastSec = s; const m = d.getMinutes(), h = d.getHours();
+  $('ctime').textContent = p2(h) + ' ' + p2(m) + ' ' + p2(s);
+  if (!reduce && fx !== 'mono') burst = Math.max(burst, .3);
+  if (m !== lastMin){
+    const ds = d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + WD[d.getDay()];
+    $('csub').textContent = (place ? place + ' / ' : '') + ds; $('tagDate').textContent = ds;
+    $('srtime').textContent = 'AR Clock ' + h + '時' + m + '分';
+    if (lastMin !== -1 && !reduce){ burst = 1; lines = 1; }
+  }
+  if (h !== lastHour){ if (lastHour !== -1) S.dirty = true; updateCaption(); }
+  if (state.chime){ if (m === 59 && s >= 57) pip(440, .12, .32); if (m === 0 && s === 0) pong(); }
+  lastMin = m; lastHour = h;
+}
+function frame(ms){
+  requestAnimationFrame(frame);
+  const now = ms / 1000, dt = Math.min(.1, now - lastT || .016); lastT = now;
+  tickClock();
+  if (running && !hold){
+    if (cardT0 !== null){
+      const a = now - cardT0;
+      if (!opening && a >= CARD_LEN - WIPE){ opening = true; card.classList.remove('in'); card.classList.add('out'); if (!reduce) burst = Math.max(burst, .8); }
+      if (a >= CARD_LEN + .05){ cardT0 = null; sceneT0 = now; card.classList.remove('out'); }
+    } else if (now - sceneT0 >= SC_LEN){
+      cardT0 = now; opening = false; card.classList.toggle('inv'); void card.offsetWidth; card.classList.add('in');
+    }
+  }
+  burst *= Math.exp(-dt * 4); lines *= Math.exp(-dt * 1.6);
+  if (!gl) return;
+  layout(); upload(now);
+  const glitch = fx === 'glitch' || fx === 'both';
+  gl.viewport(0, 0, cv.width, cv.height);
+  gl.uniform2f(U.u_res, cv.width, cv.height); gl.uniform2f(U.u_src, srcW, srcH);
+  gl.uniform1f(U.u_t, now % 600); gl.uniform1f(U.u_dpr, dpr);
+  gl.uniform1f(U.u_manga, fx === 'manga' || fx === 'both' ? 1 : 0); gl.uniform1f(U.u_glitch, glitch ? 1 : 0);
+  gl.uniform1f(U.u_burst, glitch ? Math.min(1.2, burst + (A.playing && !reduce ? beatPulse() * .16 : 0)) : 0);
+  gl.uniform1f(U.u_lines, lines); gl.uniform1f(U.u_mirror, src.kind === 'camera' && src.mirror ? 1 : 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+cv.addEventListener('pointerdown', () => {
+  if (!elPanel.hidden){ elPanel.hidden = true; elMore.setAttribute('aria-expanded', 'false'); }
+  burst = 1;
+});
+cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); gl = null; });
+cv.addEventListener('webglcontextrestored', () => { initGL(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (src.kind === 'camera' || src.kind === 'file') video.play().catch(() => {});
+  if (running && navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
+});
+window.__ar = { set(mode, b, l){ fx = mode; hold = true; running = true; startBox.hidden = true; card.className = 'card'; syncSrc(); setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
+
+if (!initGL()) msg.textContent = 'このブラウザではWebGLを使えないため、映像を表示できません。';
+syncUI(); syncSrc(); wake(); tickClock();
+// 前にカメラを許可済みなら、開いたときにそのまま起動する
+if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name:'camera' }).then(r => { if (r.state === 'granted') startCamera(); }).catch(() => {});
+requestAnimationFrame(frame);
+})();
+</script>
