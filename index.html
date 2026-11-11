@@ -250,11 +250,14 @@ const MOODS = {
     prog:[[0,'M'],[7,'M'],[9,'m7'],[5,'M7'],[0,'M'],[4,'m7'],[5,'M7'],[7,'sus']] },
   day:{ label:'DAYTIME', key:55, bpm:118, cut:8500, drums:2, oct:12, send:.18,
     prog:[[5,'M7'],[7,'M'],[4,'m7'],[9,'m'],[5,'M7'],[7,'M'],[0,'M'],[0,'M7']] },
-  evening:{ label:'EVENING', key:60, bpm:100, cut:4200, drums:1, oct:0, send:.24,
+  evening:{ label:'EVENING', key:57, bpm:100, cut:4200, drums:1, oct:0, send:.24,
     prog:[[9,'m7'],[5,'M7'],[0,'M7'],[7,'M'],[9,'m7'],[5,'M7'],[2,'m7'],[7,'sus']] },
-  night:{ label:'NIGHT', key:63, bpm:76, cut:1900, drums:0, oct:0, send:.32,
+  night:{ label:'NIGHT', key:64, bpm:76, cut:1900, drums:0, oct:0, send:.32,
     prog:[[0,'M7'],[9,'m7'],[5,'M7'],[7,'sus'],[2,'m7'],[7,'7'],[0,'M7'],[0,'M7']] }
 };
+// 時報の高さは固定：短い音は約2kHz、長い音は約1kHz（UNIQLOCKの動画の実測）。正確にはシの音（1975.5Hz / 987.8Hz）に置く。
+// 各時間帯の調は、シが必ず音階に含まれるもの（朝=ニ長調、昼=ト長調、夕=イ長調、夜=ホ長調）にして、曲と濁らないようにしている
+const TONE_PIP = 1975.53, TONE_LONG = 987.77;
 const STYLES = {
   piano:{ label:'ピアノ', tempo:1 }, electro:{ label:'エレクトロ', tempo:1.04 },
   musicbox:{ label:'オルゴール', tempo:.8 }, lofi:{ label:'ローファイ', tempo:.82 },
@@ -400,10 +403,9 @@ function scheduleStep(s, t){
   const ci = S.bar % 4 === 3 ? M.c[7 - h] : M.c[h];
   const mel = i => P.key + P.oct + PENTA[i];
   const D = P.drums;
-  // 時報：秒の頭に来る刻みで鳴らす。高さは今の和音に合わせる（長い音＝根音、短い音＝5度）ので曲とぶつからない
+  // 時報：秒の頭に来る刻みで鳴らす。高さは常に同じ（シの音）。曲のほうを、シが濁らない調にしてある
   if (state.chime && running && S.abs % (P.bpm / 15) === 0){
-    if (Math.round(S.abs / (P.bpm / 15)) % 10 === 0){ let pm = root; while (pm < 77) pm += 12; while (pm > 88) pm -= 12; pong(mf(pm), t); }
-    else { let qm = root + 7; while (qm < 89) qm += 12; while (qm > 100) qm -= 12; pip(mf(qm), .05, .2, t); }
+    if (Math.round(S.abs / (P.bpm / 15)) % 10 === 0) pong(TONE_LONG, t); else pip(TONE_PIP, .05, .22, t);
   }
 
   if (P.style === 'piano'){
@@ -512,7 +514,7 @@ function pip(f, d, v, at){
 function pong(f, at){   // 10秒の区切り：平らな音を約1秒（曲が鳴っていないときは1kHz）
   if (!A.ctx || A.ctx.state !== 'running') return;
   const c = A.ctx, t = at || c.currentTime + .02, o = c.createOscillator(), g = c.createGain();
-  o.frequency.value = f || 1000;
+  o.frequency.value = f || TONE_LONG;
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.2, t + .012); g.gain.setValueAtTime(.2, t + .88); g.gain.linearRampToValueAtTime(0, t + .95);
   o.connect(g); g.connect(A.chime); o.start(t); o.stop(t + 1);
 }
@@ -940,7 +942,7 @@ function render(now){
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tB.t); gl.uniform1i(u.u_fx, 1); gl.activeTexture(gl.TEXTURE0);
   srcU(u); gl.uniform2f(u.u_res, cv.width, cv.height); gl.uniform1f(u.u_t, now % 600); gl.uniform1f(u.u_dpr, dpr);
   gl.uniform1f(u.u_mono, mono ? 1 : 0); gl.uniform1f(u.u_look, LOOK_ID[look] || 0); gl.uniform1f(u.u_glitch, glitch ? 1 : 0);
-  gl.uniform1f(u.u_burst, glitchOn ? Math.min(1.2, burst + (A.playing && !reduce ? beatPulse() * .16 : 0)) : tap);
+  gl.uniform1f(u.u_burst, glitchOn ? Math.min(1.2, burst) : tap);
   gl.uniform1f(u.u_lines, lines);
   gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'vivid' ? .012 : look === 'none' ? (mono ? .04 : 0) : look === 'manga' && !mono ? .02 : .03);
   gl.uniform3f(u.u_paper, .965, .957, .933); gl.uniform3f(u.u_ink, .063, .063, .071);
@@ -952,9 +954,10 @@ function render(now){
 const SC_LEN = 10, CARD_LEN = 4, WIPE = .55;
 // 時刻カードは2枚を交互に使い、1秒ごとに新しい1枚が上下左右のどこかから入ってくる
 const cards = [$('cardA'), $('cardB')], EASE = 'cubic-bezier(.7,0,.2,1)';
-const HIDE = { l:'inset(0 100% 0 0)', r:'inset(0 0 0 100%)', t:'inset(0 0 100% 0)', b:'inset(100% 0 0 0)' }, SIDES = ['l', 'r', 't', 'b'];
-let top = 0, inv = false, lastSide = '';
-const side = () => { let s; do { s = SIDES[Math.random() * 4 | 0]; } while (s === lastSide); lastSide = s; return s; };
+const HIDE = { l:'inset(0 100% 0 0)', r:'inset(0 0 0 100%)', t:'inset(0 0 100% 0)', b:'inset(100% 0 0 0)' };
+let top = 0, inv = false, horiz = Math.random() < .5;
+// 動きは「左右」と「上下」を必ず交互にする。どちら側かだけがランダム
+const side = () => { horiz = !horiz; return (horiz ? 'lr' : 'tb')[Math.random() * 2 | 0]; };
 function clip(el, v, anim){
   el.style.transition = anim && !reduce ? 'clip-path .42s ' + EASE + ', -webkit-clip-path .42s ' + EASE : 'none';
   el.style.webkitClipPath = v; el.style.clipPath = v;
@@ -980,9 +983,9 @@ if (place) $('tagPlace').textContent = place;
 function tickClock(){
   const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
   lastSec = s; const m = d.getMinutes(), h = d.getHours();
-  // UNIQLOCKと同じ割り：0秒の長い音のあと、1〜5秒は毎秒1枚ずつ時刻カード、6秒から次の1秒までは映像
-  if (running && !hold){ const k = s % 10; if (k >= 1 && k <= 5) cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s)); else if (k === 6) cardOut(); }
-  if (!reduce && glitchOn) burst = Math.max(burst, .3);
+  // 0秒の長い音と同時に時刻カードが始まり、0〜5秒は毎秒1枚ずつ（6秒間）。6〜9秒は映像
+  if (running && !hold){ const k = s % 10; if (k <= 5) cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s)); else if (k === 6) cardOut(); }
+  if (!reduce && glitchOn) burst = Math.max(burst, s % 10 === 0 ? 1.1 : .8);   // グリッチONのときは、毎秒の音に合わせて映像を乱す
   if (m !== lastMin){
     const ds = d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + WD[d.getDay()];
     document.querySelectorAll('.csub').forEach(el => { el.textContent = (place ? place + ' / ' : '') + ds; }); $('tagDate').textContent = ds;
@@ -991,7 +994,7 @@ function tickClock(){
   }
   if (h !== lastHour){ if (lastHour !== -1) S.dirty = true; updateCaption(); }
   // 時報：毎秒短い音、0・10・20…秒に長い音。BGMが鳴っている間は、拍と和音に合わせて音の側で鳴らす
-  if (state.chime && running && !(A.playing && A.ctx && A.ctx.state === 'running')){ if (s % 10 === 0) pong(); else pip(2000, .05, .28); }
+  if (state.chime && running && !(A.playing && A.ctx && A.ctx.state === 'running')){ if (s % 10 === 0) pong(); else pip(TONE_PIP, .05, .28); }
   lastMin = m; lastHour = h;
 }
 function frame(ms){
