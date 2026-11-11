@@ -30,7 +30,7 @@ body{
 /* 画面いっぱいのコマ。余白はノッチやホームバーの分だけ取る */
 .app{position:fixed; inset:0; display:flex; background:var(--ink)}
 @supports (height:100dvh){ .app{bottom:auto; height:100dvh} }
-.stage{position:relative; flex:1 1 auto; min-width:0; min-height:0; background:var(--ink); overflow:hidden}
+.stage{position:relative; flex:1 1 auto; min-width:0; min-height:0; background:var(--ink); overflow:hidden; touch-action:none}
 #gl{position:absolute; inset:0; width:100%; height:100%; display:block}
 #vid{position:absolute; left:0; top:0; width:2px; height:2px; opacity:0; pointer-events:none}
 /* 場所と日付は文字だけを映像に直に載せる。下の映像と反転して重なるので、明るい所でも暗い所でも読める */
@@ -670,17 +670,31 @@ function openSheet(o){
 // 設定ボタンはつかんで動かせる。離すと、いちばん近い画面の角に吸い付く
 let corner = store.get('menuPos', 'tr'); if (!['tl', 'tr', 'bl', 'br'].includes(corner)) corner = 'tr';
 elMenu.dataset.c = corner;
-let drag = null, dragged = false;
-elMenu.addEventListener('pointerdown', ev => { drag = { x:ev.clientX, y:ev.clientY, dx:0, dy:0, moved:false }; try{ elMenu.setPointerCapture(ev.pointerId); }catch(e){} });
-elMenu.addEventListener('pointermove', ev => {
-  if (!drag) return;
+// ホーム画面から開いたiPhoneでは、画面の端に固定した部品の「見た目」と「タップを受ける位置」がずれることがある。
+// そこで歯車への操作はボタン自身に頼らず、画面全体で指の位置を見て判定する（歯車のまわりを少し広めに取る）
+let drag = null, menuHandledAt = -1e9;
+function nearGear(x, y){
+  const r = elMenu.getBoundingClientRect(), mx = 18, my = 56;
+  return x >= r.left - mx && x <= r.right + mx && y >= r.top - my && y <= r.bottom + my;
+}
+document.addEventListener('pointerdown', ev => {
+  if (sheetOpen || !ev.isPrimary || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
+  if (!$('start').hidden || !$('ask').hidden) return;   // 最初の画面が出ている間は、そちらの操作を優先
+  if (!nearGear(ev.clientX, ev.clientY)) return;
+  drag = { id:ev.pointerId, x:ev.clientX, y:ev.clientY, dx:0, dy:0, moved:false };
+  ev.preventDefault(); ev.stopPropagation();
+}, true);
+addEventListener('pointermove', ev => {
+  if (!drag || ev.pointerId !== drag.id) return;
   drag.dx = ev.clientX - drag.x; drag.dy = ev.clientY - drag.y;
   if (!drag.moved && Math.hypot(drag.dx, drag.dy) < 8) return;
   drag.moved = true; elMenu.style.transition = 'none'; elMenu.style.transform = 'translate(' + drag.dx + 'px,' + drag.dy + 'px)'; wake();
-});
-function dragEnd(){
-  if (!drag) return; const d = drag; drag = null; if (!d.moved) return;
-  dragged = true; setTimeout(() => { dragged = false; }, 80);
+}, true);
+function dragEnd(ev){
+  if (!drag || (ev && ev.pointerId !== drag.id)) return;
+  const d = drag; drag = null; menuHandledAt = performance.now();
+  if (ev){ ev.preventDefault(); ev.stopPropagation(); }
+  if (!d.moved){ if (!ev || ev.type !== 'pointercancel') openSheet(!sheetOpen); return; }
   const r0 = elMenu.getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
   corner = (cy < innerHeight / 2 ? 't' : 'b') + (cx < innerWidth / 2 ? 'l' : 'r'); store.set('menuPos', corner);
   elMenu.style.transform = ''; elMenu.dataset.c = corner;
@@ -689,8 +703,11 @@ function dragEnd(){
   elMenu.style.transition = reduce ? 'none' : 'transform .32s cubic-bezier(.2,.9,.3,1.25)'; elMenu.style.transform = '';
   setTimeout(() => { elMenu.style.transition = ''; }, 360);
 }
-elMenu.addEventListener('pointerup', dragEnd); elMenu.addEventListener('pointercancel', dragEnd);
-elMenu.addEventListener('click', () => { if (!dragged) openSheet(!sheetOpen); });
+addEventListener('pointerup', dragEnd, true); addEventListener('pointercancel', dragEnd, true);
+// 歯車の操作のあとに続いて届く click は、映像（一時停止）に渡さない
+document.addEventListener('click', ev => { if (performance.now() - menuHandledAt < 600 && ev.target !== elMenu){ ev.preventDefault(); ev.stopPropagation(); } }, true);
+// キーボード（Enter・Space）での操作
+elMenu.addEventListener('click', () => { if (performance.now() - menuHandledAt > 600) openSheet(!sheetOpen); });
 $('close').addEventListener('click', () => openSheet(false));
 shade.addEventListener('click', () => openSheet(false));
 addEventListener('keydown', ev => { if (ev.key === 'Escape') openSheet(false); });
