@@ -32,7 +32,8 @@ body{
 @supports (height:100dvh){ .app{bottom:auto; height:100dvh} }
 .stage{position:relative; flex:1 1 auto; min-width:0; min-height:0; background:var(--ink); overflow:hidden; touch-action:none}
 #gl{position:absolute; inset:0; width:100%; height:100%; display:block}
-#vid{position:absolute; left:0; top:0; width:2px; height:2px; opacity:0; pointer-events:none}
+#vid, #demoVid{position:absolute; left:0; top:0; width:2px; height:2px; opacity:0; pointer-events:none}
+.modal{position:fixed; inset:0; z-index:9; background:rgba(0,0,0,.3)}
 /* 場所と日付は文字だけを映像に直に載せる。下の映像と反転して重なるので、明るい所でも暗い所でも読める */
 .tag{position:absolute; z-index:1; color:#fff; mix-blend-mode:difference; pointer-events:none;
   font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.18em; font-variant-numeric:tabular-nums}
@@ -131,6 +132,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
   <main class="stage" id="stage">
     <canvas id="gl" data-i18n-label="canvas"></canvas>
     <video id="vid" playsinline muted loop></video>
+    <video id="demoVid" src="sample.mp4" preload="auto" playsinline muted loop autoplay></video>
     <div class="tag tl" id="tagPlace" hidden></div>
     <div class="tag br" id="tagDate" hidden></div>
     <div class="hint" id="tagSrc" hidden></div>
@@ -154,6 +156,28 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 <div class="card" id="cardA"><div class="time ctime">-- -- --</div><div class="sub csub"></div><div class="sub dimmed cmood"></div></div>
 <div class="card" id="cardB"><div class="time ctime">-- -- --</div><div class="sub csub"></div><div class="sub dimmed cmood"></div></div>
 
+<div class="modal" id="resume" hidden>
+  <div class="start" id="resCam">
+    <h2 data-i18n="resT"></h2>
+    <p data-i18n="resCamD"></p>
+    <button type="button" id="resCamYes" class="primary" data-i18n="resCamYes"></button>
+    <button type="button" id="resCamNo" data-i18n="resCamNo"></button>
+  </div>
+  <div class="start" id="resSnd" hidden>
+    <h2 data-i18n="askT"></h2>
+    <p data-i18n="askD"></p>
+    <button type="button" id="resSndYes" class="primary" data-i18n="yes"></button>
+    <button type="button" id="resSndNo" data-i18n="no"></button>
+  </div>
+</div>
+<div class="modal" id="locAsk" hidden>
+  <div class="start">
+    <h2 data-i18n="locAskT"></h2>
+    <p data-i18n="locAskD"></p>
+    <button type="button" id="locYes" class="primary" data-i18n="locYes"></button>
+    <button type="button" id="locNo" data-i18n="locNo"></button>
+  </div>
+</div>
 <button type="button" id="menu" data-c="tr" data-i18n-label="settings" aria-expanded="false" aria-controls="sheet"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M19.15 10.08 L21.88 10.44 L21.88 13.56 L19.15 13.92 L18.41 15.70 L20.09 17.88 L17.88 20.09 L15.70 18.41 L13.92 19.15 L13.56 21.88 L10.44 21.88 L10.08 19.15 L8.30 18.41 L6.12 20.09 L3.91 17.88 L5.59 15.70 L4.85 13.92 L2.12 13.56 L2.12 10.44 L4.85 10.08 L5.59 8.30 L3.91 6.12 L6.12 3.91 L8.30 5.59 L10.08 4.85 L10.44 2.12 L13.56 2.12 L13.92 4.85 L15.70 5.59 L17.88 3.91 L20.09 6.12 L18.41 8.30Z M12 8.3a3.7 3.7 0 1 0 0 7.4a3.7 3.7 0 1 0 0-7.4Z"/></svg></button>
 <div class="toast" id="toast" role="status"></div>
 <div class="shade" id="shade"></div>
@@ -203,8 +227,9 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       <h3 data-i18n="gView"></h3>
       <div class="seg">
         <button type="button" id="labelsBtn" aria-pressed="false"></button>
+        <button type="button" id="locRevoke" data-i18n="locRevoke" hidden></button>
       </div>
-      <p class="note" data-i18n="locNote"></p>
+      <p class="note" id="locStatus"></p>
     </div>
     <div class="grp">
       <h3 data-i18n="gSrc"></h3>
@@ -609,6 +634,9 @@ const I18N = {
     errNoCam:'This browser can’t use the camera. Choose a photo or video to try it.', errDenied:'Camera access isn’t allowed. Allow it in your browser settings, or choose a photo or video instead.',
     errNotFound:'No camera was found. Choose a photo or video to try it.', errBusy:'Couldn’t start the camera. Check that another app isn’t using it.',
     errFile:'Couldn’t load that file. Choose a different photo or video.', errGL:'This browser doesn’t support WebGL, so the picture can’t be shown.',
+    resT:'Welcome back', resCamD:'Turn the camera back on?', resCamYes:'Resume camera', resCamNo:'Use the sample video',
+    locAskT:'Use your location?', locAskD:'To show where you are, this uses your location. In Japan the coordinates go to the Geospatial Information Authority to find the prefecture; elsewhere, coordinates rounded to about 1 km go to BigDataCloud to find the country. Nothing else is sent.',
+    locYes:'Allow', locNo:'Date only', locRevoke:'Stop using location', locGiven:'Location allowed on ', locDenied:'Location declined on ', locNone:'Location not used yet. You’ll be asked when you turn this on.',
     paused:'Paused', resumed:'Resumed', audioBack:'Sound resumed', hintAudio:'Tap to resume sound', hintPaused:'Paused · tap to resume', canvas:'Camera picture with filter'
   },
   ja: {
@@ -627,6 +655,9 @@ const I18N = {
     errNoCam:'このブラウザではカメラを使えません。写真・動画を選ぶと試せます。', errDenied:'カメラが許可されていません。ブラウザの設定で許可してください。許可できない表示環境では、写真・動画を選ぶと試せます。',
     errNotFound:'カメラが見つかりません。写真・動画を選ぶと試せます。', errBusy:'カメラを起動できませんでした。ほかのアプリがカメラを使っていないか確認してください。',
     errFile:'このファイルは読み込めませんでした。別の写真か動画を選んでください。', errGL:'このブラウザではWebGLを使えないため、映像を表示できません。',
+    resT:'おかえりなさい', resCamD:'カメラをもう一度使いますか。', resCamYes:'カメラを再開', resCamNo:'サンプル映像にする',
+    locAskT:'現在地を使いますか', locAskD:'場所を表示するために現在地を使います。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために約1km単位に丸めた座標を BigDataCloud へ送ります。それ以外には送りません。',
+    locYes:'許可する', locNo:'日付だけ表示', locRevoke:'現在地の利用をやめる', locGiven:'現在地の利用を許可：', locDenied:'現在地の利用を断った日時：', locNone:'現在地はまだ使っていません。オンにしたときに確認します。',
     paused:'一時停止', resumed:'再開', audioBack:'音を再開しました', hintAudio:'タップで音を再開', hintPaused:'一時停止中・タップで再開', canvas:'フィルタをかけたカメラ映像'
   }
 };
@@ -679,7 +710,7 @@ function nearGear(x, y){
 }
 document.addEventListener('pointerdown', ev => {
   if (sheetOpen || !ev.isPrimary || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
-  if (!$('start').hidden || !$('ask').hidden) return;   // 最初の画面が出ている間は、そちらの操作を優先
+  if (!$('start').hidden || !$('ask').hidden || !$('resume').hidden || !$('locAsk').hidden) return;   // 確認画面が出ている間は、そちらの操作を優先
   if (!nearGear(ev.clientX, ev.clientY)) return;
   drag = { id:ev.pointerId, x:ev.clientX, y:ev.clientY, dx:0, dy:0, moved:false };
   ev.preventDefault(); ev.stopPropagation();
@@ -761,46 +792,17 @@ document.addEventListener('visibilitychange', tryResume); addEventListener('page
 const stage = $('stage'), cv = $('gl'), video = $('vid'), startBox = $('start'), msg = $('msg'), fileIn = $('file');
 const demo = document.createElement('canvas'); demo.width = 720; demo.height = 720;
 const DX = demo.getContext('2d'), still = document.createElement('canvas');
-let src = { kind:'demo' }, stream = null, stillDirty = false, running = false, wakeLock = null;
+let src = { kind:'demo' }, stream = null, stillDirty = false, running = false, wakeLock = null, away = null;
 let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environment';
 // 見た目は3つの組み合わせ：ベース（カラー/モノクロ）× フィルタ × グリッチ。以前の単一フィルタ設定は読み替える
 const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:['mono', 'none', '1'], mono:['mono', 'none', '0'], pop:['color', 'pop', '0'], film:['color', 'film', '0'], none:['color', 'none', '0'] }[store.get('fx', '')] || ['color', 'none', '0'];   // 初めての人は、フィルタなしのカラーから
 let base = store.get('base', OLD[0]) === 'color' ? 'color' : 'mono', look = store.get('look', OLD[1]), glitchOn = store.get('glitch', OLD[2]) === '1';
 if (!['none', 'film', 'vivid', 'manga', 'pop', 'mini', 'fish'].includes(look)) look = 'none';
 
-// サンプル映像：黒地に、中心から光の帯が渦を巻いて流れ出す。色はゆっくり巡る
-const GLOW = []; for (let h = 0; h < 24; h++){
-  const g = document.createElement('canvas'); g.width = g.height = 64; const x = g.getContext('2d'), r = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-  r.addColorStop(0, 'hsla(' + h * 15 + ',100%,72%,.55)'); r.addColorStop(.35, 'hsla(' + h * 15 + ',100%,55%,.16)'); r.addColorStop(1, 'hsla(' + h * 15 + ',100%,50%,0)');
-  x.fillStyle = r; x.fillRect(0, 0, 64, 64); GLOW.push(g);
-}
-const PARTS = [], STREAMS = 6;
-let demoT = -1;
-function drawDemo(t){
-  const c = DX, W0 = demo.width, H0 = demo.height, cx = W0 / 2, cy = H0 / 2;
-  if (demoT < 0){ c.fillStyle = '#000'; c.fillRect(0, 0, W0, H0); }
-  demoT = t;
-  c.globalCompositeOperation = 'source-over'; c.fillStyle = 'rgba(0,0,0,.085)'; c.fillRect(0, 0, W0, H0);
-  const ex = cx + Math.sin(t * .31) * 70 + Math.sin(t * .83) * 30, ey = cy + Math.cos(t * .27) * 90 + Math.sin(t * .61) * 40;
-  for (let i = 0; i < STREAMS; i++){
-    const a = i / STREAMS * 6.2832 + t * .22 + Math.sin(t * .37 + i * 1.7) * 1.1, hue = (t * 9 + i * 38 + Math.sin(t * .2 + i) * 30) % 360;
-    for (let k = 0; k < 3; k++){
-      const sp = 1.7 + Math.random() * 1.5, aa = a + (Math.random() - .5) * .16;
-      PARTS.push({ x:ex, y:ey, vx:Math.cos(aa) * sp, vy:Math.sin(aa) * sp, life:0, max:150 + Math.random() * 70, h:((hue / 15 | 0) + 24) % 24, curl:.011 * Math.sin(t * .3 + i * 2.1) + (i % 2 ? .008 : -.008) });
-    }
-  }
-  c.globalCompositeOperation = 'lighter';
-  for (let n = PARTS.length - 1; n >= 0; n--){
-    const p = PARTS[n]; p.life++;
-    if (p.life > p.max){ PARTS[n] = PARTS[PARTS.length - 1]; PARTS.pop(); continue; }
-    const cs = Math.cos(p.curl), sn = Math.sin(p.curl), vx = p.vx * cs - p.vy * sn, vy = p.vx * sn + p.vy * cs;
-    p.vx = vx * .997; p.vy = vy * .997; p.x += p.vx; p.y += p.vy;
-    const u = p.life / p.max, sz = 10 + u * 46;
-    c.globalAlpha = Math.min(1, u * 8) * (1 - u) * .5;
-    c.drawImage(GLOW[p.h], p.x - sz / 2, p.y - sz / 2, sz, sz);
-  }
-  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-}
+// サンプル映像：同じ場所に置いた動画（sample.mp4）。ページを開いた瞬間から読み込みと再生を始める
+const demoVid = $('demoVid');
+demo.width = demo.height = 4; DX.fillStyle = '#000'; DX.fillRect(0, 0, 4, 4);   // 読み込みが終わるまでは黒
+const demoPlay = () => { if (src.kind === 'demo' && !frozen && !away) demoVid.play().catch(() => {}); };
 function stopStream(){ if (stream){ stream.getTracks().forEach(tr => tr.stop()); stream = null; } }
 // 初回だけ「音を流すか」を聞く。答えは覚えておき、次からは聞かずにその通りにする
 const ask = $('ask');
@@ -861,7 +863,8 @@ video.addEventListener('ended', () => { if (src.kind === 'file'){ video.currentT
 let lastCT = -1, stall = 0, camRetry = 0, restarting = false;
 function watchdog(){
   updateTag();
-  if (document.hidden || restarting || frozen || (src.kind !== 'camera' && src.kind !== 'file')) { stall = 0; return; }
+  if (src.kind === 'demo'){ if (!document.hidden && demoVid.paused) demoPlay(); stall = 0; return; }
+  if (document.hidden || restarting || frozen || away || (src.kind !== 'camera' && src.kind !== 'file')) { stall = 0; return; }
   const ct = video.currentTime; stall = (video.paused || ct === lastCT) ? stall + 1 : 0; lastCT = ct;
   if (stall === 0) camRetry = 0;
   if (stall < 2) return;
@@ -888,6 +891,7 @@ let frozen = false, tapTimer = null;
 function setFrozen(f){
   frozen = f;
   if (src.kind === 'file'){ if (f) video.pause(); else video.play().catch(() => {}); }
+  if (src.kind === 'demo'){ if (f) demoVid.pause(); else demoPlay(); }
   say(tr(f ? 'paused' : 'resumed')); updateTag();
 }
 const toast = $('toast');
@@ -925,7 +929,22 @@ function locate(){
       }).catch(() => abroad(pos));
   }, () => setPlace(''), { maximumAge:600000, timeout:15000 });
 }
-$('labelsBtn').addEventListener('click', () => { labelsOn = !labelsOn; store.set('labels', labelsOn ? '1' : '0'); if (labelsOn) locate(); syncSrc(); });
+// 現在地を使うかの確認。直近の答えと日時を記録しておき、許可済みなら次からは聞かない
+const getConsent = () => { try{ const c = JSON.parse(store.get('locConsent', 'null')); return c && (c.v === 'yes' || c.v === 'no') ? c : null; }catch(e){ return null; } };
+const setConsent = v => store.set('locConsent', JSON.stringify({ v, at:Date.now() }));
+$('labelsBtn').addEventListener('click', () => {
+  labelsOn = !labelsOn; store.set('labels', labelsOn ? '1' : '0');
+  if (labelsOn){ const c = getConsent(); if (c && c.v === 'yes') locate(); else $('locAsk').hidden = false; }
+  syncSrc();
+});
+$('locYes').addEventListener('click', () => { setConsent('yes'); $('locAsk').hidden = true; locate(); syncSrc(); });
+$('locNo').addEventListener('click', () => { setConsent('no'); $('locAsk').hidden = true; setPlace(''); });
+$('locRevoke').addEventListener('click', () => { setConsent('no'); setPlace(''); });
+function syncLoc(){
+  const c = getConsent(), d = c && new Date(c.at), ds = d ? d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) : '';
+  $('locStatus').textContent = !c ? tr('locNone') : tr(c.v === 'yes' ? 'locGiven' : 'locDenied') + ds;
+  $('locRevoke').hidden = !(c && c.v === 'yes');
+}
 // グリッチの強さ：弱いと、たまに細くずれて色が少しにじむ程度。強いと、ずれる回数と幅、色のにじみが大きくなる
 let glitchAmt = parseFloat(store.get('glitchAmt', '0.4')); if (isNaN(glitchAmt)) glitchAmt = .4; glitchAmt = Math.min(1, Math.max(0, glitchAmt));
 $('glitchAmt').value = glitchAmt;
@@ -943,6 +962,8 @@ $('segLang').addEventListener('click', ev => {
 function syncSrc(){
   const pt = placeText();
   $('tagPlace').textContent = pt; $('tagPlace').hidden = !labelsOn || !pt; $('tagDate').hidden = !labelsOn;
+  syncLoc();
+  if (src.kind !== 'demo') demoVid.pause(); else demoPlay();
   $('labelsBtn').setAttribute('aria-pressed', labelsOn ? 'true' : 'false'); $('labelsBtn').textContent = tr('labels') + (labelsOn ? ' ON' : ' OFF');
   updateTag();
   document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', src.kind === 'camera' && b.dataset.v === facing ? 'true' : 'false'));
@@ -1148,11 +1169,11 @@ function layout(){
   }
 }
 function upload(t){
-  if (frozen) return;   // 一時停止中は最後のコマを持ち続ける
+  if (frozen || away) return;   // 一時停止中と、復帰の確認中は最後のコマを持ち続ける
   let el = demo, w = demo.width, h = demo.height;
+  if (src.kind === 'demo' && demoVid.readyState >= 2 && demoVid.videoWidth){ el = demoVid; w = demoVid.videoWidth; h = demoVid.videoHeight; }
   if ((src.kind === 'camera' || src.kind === 'file') && video.readyState >= 2 && video.videoWidth){ el = video; w = video.videoWidth; h = video.videoHeight; }
   else if (src.kind === 'image'){ if (!stillDirty) return; stillDirty = false; el = still; w = still.width; h = still.height; }
-  if (el === demo) drawDemo(t);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   try{ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, el); srcW = w; srcH = h; }catch(e){}
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
@@ -1218,7 +1239,7 @@ function tickClock(){
   const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
   lastSec = s; const m = d.getMinutes(), h = d.getHours();
   // 0秒の長い音のときはカードを出さず、1〜5秒に毎秒1枚ずつ。6秒になった瞬間に映像へ戻り、次の1秒まで映像
-  if (running && !hold){ const k = s % 10; if (k >= 1 && k <= 5) cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s)); else if (k === 6) cardOut(); }
+  if (running && !hold && !away){ const k = s % 10; if (k >= 1 && k <= 5) cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s)); else if (k === 6) cardOut(); }
   if (!reduce && glitchOn) burst = Math.max(burst, s % 10 === 0 ? 1.1 : .8);   // グリッチONのときは、毎秒の音に合わせて映像を乱す
   if (m !== lastMin){
     const ds = d.getFullYear() + '.' + p2(d.getMonth() + 1) + '.' + p2(d.getDate()) + ' ' + WD[d.getDay()];
@@ -1247,20 +1268,46 @@ cv.addEventListener('click', () => {
 });
 cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); gl = null; });
 cv.addEventListener('webglcontextrestored', () => { initGL(); });
+// バックグラウンドに回ったら、カメラと音を止める。戻ってきたら「カメラ→音」の順に確認してから再開する
+const resumeBox = $('resume');
+function goAway(){
+  if (!running || away || hold) return;
+  away = { cam:src.kind === 'camera' };
+  if (src.kind === 'camera'){ stopStream(); video.srcObject = null; }
+  if (A.playing) stop();
+  openSheet(false); cardsOff();
+}
+function comeBack(){
+  if (!away || document.hidden) return;
+  resumeBox.hidden = false; $('resCam').hidden = !away.cam; $('resSnd').hidden = away.cam;
+}
+function resumeDone(){ resumeBox.hidden = true; away = null; lastSec = -1; if (src.kind === 'file' && !frozen) video.play().catch(() => {}); demoPlay(); syncSrc(); }
+const toSound = () => { $('resCam').hidden = true; $('resSnd').hidden = false; };
+$('resCamYes').addEventListener('click', () => { restarting = true; startCamera().then(() => { restarting = false; toSound(); }); });
+$('resCamNo').addEventListener('click', () => { src = { kind:'demo' }; syncSrc(); toSound(); });
+$('resSndYes').addEventListener('click', () => {
+  // 音の仕組みをこのタップの中で作り直してから鳴らす（復帰後の止まったままの状態を引きずらない）
+  clearInterval(A.timer); if (A.ctx){ try{ A.ctx.close(); }catch(e){} } A.ctx = null; A.playing = false;
+  store.set('sound', '1'); play(); resumeDone();
+});
+$('resSndNo').addEventListener('click', () => { store.set('sound', '0'); resumeDone(); });
+addEventListener('pagehide', goAway);
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) return;
+  if (document.hidden){ goAway(); return; }
+  if (away){ comeBack(); return; }
   if ((src.kind === 'camera' || src.kind === 'file') && !frozen) video.play().catch(() => {});
+  demoPlay();
   stall = 1; watchdog();
   if (running && navigator.wakeLock && navigator.wakeLock.request && !wakeLock) navigator.wakeLock.request('screen').then(w => { wakeLock = w; w.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {});
 });
-window.__ar = { set(b0, l0, g0, b, l, p){ base = b0; look = l0; glitchOn = !!g0; pal = p || 0; hold = true; running = true; startBox.hidden = true; ask.hidden = true; cardsOff(); syncSrc(); clearInterval(window.__iv); window.__iv = setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
+window.__ar = { set(b0, l0, g0, b, l, p){ base = b0; look = l0; glitchOn = !!g0; pal = p || 0; hold = true; running = true; startBox.hidden = true; ask.hidden = true; resumeBox.hidden = true; away = null; cardsOff(); syncSrc(); clearInterval(window.__iv); window.__iv = setInterval(() => { burst = b || 0; lines = l || 0; }, 16); } };
 
 applyLang();
 if (!initGL()){ errKey = 'errGL'; msg.textContent = tr('errGL'); }
-if (labelsOn) locate();
+if (labelsOn){ const c = getConsent(); if (c && c.v === 'yes') locate(); }
 syncUI(); syncSrc(); wake(); tickClock();
-// 前にカメラを許可済みなら、開いたときにそのまま起動する
-if (navigator.permissions && navigator.permissions.query) navigator.permissions.query({ name:'camera' }).then(r => { if (r.state === 'granted') startCamera(); }).catch(() => {});
+demoPlay();
+// カメラは、許可済みでも開いた瞬間には起動しない（最初の画面で選んでから）
 requestAnimationFrame(frame);
 })();
 </script>
