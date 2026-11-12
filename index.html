@@ -69,6 +69,9 @@ body.k-knock .sub{display:none}
 .time.tk{animation:tk .22s cubic-bezier(.2,.9,.2,1)}
 @keyframes tk{from{transform:scale(.965)}to{transform:none}}
 .seg.grid2{display:grid; grid-template-columns:1fr 1fr}
+/* Web 版の触覚：ボタンに重ねる透明なスイッチ */
+.hxon button{position:relative}
+.hx{position:absolute; left:0; top:0; width:100%; height:100%; margin:0; padding:0; opacity:0; cursor:pointer; -webkit-tap-highlight-color:transparent}
 /* アプリ（iOS）の中では、設定はアプリ側の画面に任せる */
 body.native #menu, body.native .sheet, body.native .shade{display:none!important}
 .card.in{-webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
@@ -1573,6 +1576,24 @@ if (window.__arNativeApp) document.addEventListener('click', ev => {
   const b = ev.target.closest('button, label.btn, #gl'); if (!b) return;
   try{ window.webkit.messageHandlers.haptic.postMessage(b.id === 'gl' ? 'soft' : 'tap'); }catch(e){}
 }, true);
+/* ───────────── Web 版の触覚（iPhone・iPad のブラウザだけ） ─────────────
+   iOS のブラウザには振動させる命令がない。ただし「スイッチ」部品だけは、指で切り替えた瞬間に端末がカチッと鳴らす。
+   そこで各ボタンの上に透明なスイッチを重ね、指が触れたときにそのカチッを借りる（強さは選べない。OS の更新で効かなくなることがある）。
+   ボタン本来の動きは変えない：スイッチに当たったタップは、そのままボタンのクリックとして届く */
+const IOS_WEB = !window.__arNativeApp && (/iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
+function hapticCover(){
+  document.querySelectorAll('button').forEach(b => {
+    if (b.id === 'menu' || b.querySelector(':scope > .hx')) return;
+    const i = document.createElement('input');
+    i.className = 'hx'; i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1; i.setAttribute('aria-hidden', 'true');
+    b.appendChild(i);   // タップはこのスイッチに当たり、そのままボタンのクリックとして1回だけ伝わる
+  });
+}
+if (IOS_WEB){
+  document.body.classList.add('hxon'); hapticCover();
+  // ボタンの文字を書き換えると重ねた部品も消えるので、そのたびに付け直す
+  new MutationObserver(hapticCover).observe(document.body, { childList:true, subtree:true });
+}
 // アプリの中では、復帰のたびに確認を挟まず、止める前の状態（カメラ・音）に戻す
 function autoResume(){
   const a = away;
