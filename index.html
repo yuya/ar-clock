@@ -286,12 +286,13 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       <h3 data-i18n="gStyle"></h3>
       <div class="seg three" id="segStyle">
         <button type="button" id="st-piano" data-v="piano" data-i18n="piano"></button>
+        <button type="button" id="st-marimba" data-v="marimba" data-i18n="marimba"></button>
         <button type="button" id="st-electro" data-v="electro" data-i18n="electro"></button>
         <button type="button" id="st-musicbox" data-v="musicbox" data-i18n="musicbox"></button>
-        <button type="button" id="st-birds" data-v="birds" data-i18n="birds"></button>
         <button type="button" id="st-chip" data-v="chip" data-i18n="chip"></button>
         <button type="button" id="st-lofi" data-v="lofi" data-i18n="lofi"></button>
         <button type="button" id="st-whistle" data-v="whistle" data-i18n="whistle"></button>
+        <button type="button" id="st-birds" data-v="birds" data-i18n="birds"></button>
         <button type="button" id="st-forest" data-v="forest" data-i18n="forest"></button>
       </div>
     </div>
@@ -353,7 +354,7 @@ const MOODS = {
 // 各時間帯の調は、シが必ず音階に含まれるもの（朝=ニ長調、昼=ト長調、夕=イ長調、夜=ホ長調）にして、曲と濁らないようにしている
 const TONE_PIP = 1975.53, TONE_LONG = 987.77;
 const STYLES = {
-  piano:{ label:'ピアノ', tempo:1 }, electro:{ label:'エレクトロ', tempo:1.04 },
+  piano:{ label:'ピアノ', tempo:1 }, marimba:{ label:'マリンバ', tempo:1 }, electro:{ label:'エレクトロ', tempo:1.04 },
   musicbox:{ label:'オルゴール', tempo:.8 }, lofi:{ label:'ローファイ', tempo:.82 },
   chip:{ label:'8bit', tempo:1.06 }, birds:{ label:'鳥のさえずり', tempo:.7 },
   whistle:{ label:'口笛', tempo:.9 }, forest:{ label:'森のさえずり', tempo:.7 }
@@ -428,6 +429,9 @@ const snare = (t, v) => { noise(t, .14, v, 'bandpass', 1900, .8); osc('triangle'
 const bass = (m, t, v, d) => { const f = mf(m); osc('triangle', f, t, .008, d, v); osc('sine', f, t, .008, d, v * .6); };
 const piano = (m, t, v, d) => { const f = mf(m); osc('triangle', f, t, .004, d, v, true); osc('sine', f * 2, t, .004, d * .4, v * .3); osc('sine', f * 1.004, t, .004, d, v * .5); };
 const bell = (m, t, v) => { const f = mf(m); osc('sine', f, t, .003, 1.6, v, true); osc('sine', f * 3.01, t, .003, .35, v * .22); osc('sine', f * 5.4, t, .002, .12, v * .1); };
+// マリンバ：木の板を叩く音。基音がすぐ減衰し、4倍音が一瞬だけ鳴る
+function marimba(m, t, v){ const f = mf(m); osc('sine', f, t, .002, .34 + 40 / f, v, true); osc('sine', f * 4, t, .001, .06, v * .3); osc('sine', f * 9.2, t, .001, .018, v * .12); }
+const MAR = ['x.xx.x.xx.x.xx.x', 'x.x.xx.x.xx.x.xx', 'xx.x.xx.x.x.xx.x'];
 function pluck(m, t, v){
   const c = A.ctx, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
   o.type = 'sawtooth'; o.frequency.value = mf(m); f.type = 'lowpass'; f.Q.value = 4;
@@ -511,7 +515,7 @@ function params(){
 function applyParams(t){
   const np = params(), old = S.P;
   S.P = np; S.beatRef = t; S.dirty = false;
-  A.lp.frequency.setTargetAtTime(AMBIENT[np.style] ? Math.max(np.cut, 9000) : np.style === 'whistle' ? Math.max(np.cut, 5000) : np.style === 'chip' ? Math.max(np.cut, 3200) : np.cut, t, .25);
+  A.lp.frequency.setTargetAtTime(np.style === 'marimba' ? Math.max(np.cut, 7000) : AMBIENT[np.style] ? Math.max(np.cut, 9000) : np.style === 'whistle' ? Math.max(np.cut, 5000) : np.style === 'chip' ? Math.max(np.cut, 3200) : np.cut, t, .25);
   A.send.gain.setTargetAtTime(np.send, t, .25);
   A.delay.delayTime.setTargetAtTime(60 / np.bpm * .75, t, .2);
   if (!old || old.style !== np.style || !S.motif) newMotif();
@@ -530,7 +534,16 @@ function scheduleStep(s, t){
     if (Math.round(S.abs / (P.bpm / 15)) % 10 === 0) pong(TONE_LONG, t); else pip(TONE_PIP, .05, .22, t);
   }
 
-  if (P.style === 'piano'){
+  if (P.style === 'marimba'){
+    // マリンバ：2本のマレットが噛み合う16分の刻み＋低い板のベース＋旋律
+    if (!S.mar || (s === 0 && S.bar % 8 === 0)) S.mar = pick(MAR);
+    const ai = M.arp[s];
+    if (S.mar[s] === 'x') marimba(voice(tones[ai % tones.length]) + 12 * Math.floor(ai / tones.length), t, s % 4 === 0 ? .13 : .085);
+    if (s === 0 || s === 6 || s === 10) marimba(b + 12, t, .2);
+    if (e && M.r[h]) marimba(mel(ci) + (P.oct ? 0 : 12), t, .15);
+    if (D > 0 && s % 4 === 2) noise(t, .03, .035, 'highpass', 7000);
+    if (D > 1 && (s === 4 || s === 12)){ noise(t, .018, .07, 'bandpass', 1500, 4); osc('sine', 1150, t, .001, .02, .04); }
+  } else if (P.style === 'piano'){
     if (s === 0) bass(b, t, .26, .5);
     if (s === 8 && D > 0) bass(b, t, .18, .35);
     if (s === 14 && D > 1) bass(b + 7, t, .14, .2);
@@ -688,7 +701,7 @@ const I18N = {
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
     locGetting:'Getting your location…', locOk:'Showing ', locErrPerm:'The browser blocked location for this page. Allow it in the browser or OS settings.', locErrPos:'Couldn’t get your position.', locErrLookup:'Got your position, but couldn’t look up the place name.', oldAmt:'Dust and scratches', weak:'Weak', strong:'Strong', fxNote:'Double-tap the picture to glitch it. A single tap freezes it.',
     gSrc:'Picture', camBack:'Rear camera', camFront:'Front camera',
-    gStyle:'Sound style', piano:'Piano', electro:'Electro', musicbox:'Music box', birds:'Birdsong', chip:'8-bit', lofi:'Lo-fi', whistle:'Whistle', forest:'Forest',
+    gStyle:'Sound style', piano:'Piano', electro:'Electro', musicbox:'Music box', birds:'Birdsong', chip:'8-bit', lofi:'Lo-fi', whistle:'Whistle', forest:'Crickets', marimba:'Marimba',
     gMood:'Time of day', auto:'Auto', morning:'Morning', day:'Day', evening:'Evening', night:'Night', moodNote:'Auto is brighter and faster in the morning, slower and softer at night.',
     gVol:'Volume', gLang:'Language',
     errNoCam:'This browser can’t use the camera. Choose a photo or video to try it.', errDenied:'Camera access isn’t allowed. Allow it in your browser settings, or choose a photo or video instead.',
@@ -710,7 +723,7 @@ const I18N = {
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
     locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', strong:'強', fxNote:'映像を2回タップすると、その場でグリッチが走ります。1回タップは一時停止です。',
     gSrc:'映像', camBack:'外側カメラ', camFront:'内側カメラ',
-    gStyle:'音色', piano:'ピアノ', electro:'エレクトロ', musicbox:'オルゴール', birds:'鳥のさえずり', chip:'8bit', lofi:'ローファイ', whistle:'口笛', forest:'森のさえずり',
+    gStyle:'音色', piano:'ピアノ', electro:'エレクトロ', musicbox:'オルゴール', birds:'鳥のさえずり', chip:'8bit', lofi:'ローファイ', whistle:'口笛', forest:'コオロギ', marimba:'マリンバ',
     gMood:'時間帯', auto:'自動', morning:'朝', day:'昼', evening:'夕', night:'夜', moodNote:'自動にすると、朝は速く明るく、夜は遅くやわらかく変わります。',
     gVol:'音量', gLang:'言語',
     errNoCam:'このブラウザではカメラを使えません。写真・動画を選ぶと試せます。', errDenied:'カメラが許可されていません。ブラウザの設定で許可してください。許可できない表示環境では、写真・動画を選ぶと試せます。',
