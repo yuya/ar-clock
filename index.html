@@ -69,6 +69,8 @@ body.k-knock .sub{display:none}
 .time.tk{animation:tk .22s cubic-bezier(.2,.9,.2,1)}
 @keyframes tk{from{transform:scale(.965)}to{transform:none}}
 .seg.grid2{display:grid; grid-template-columns:1fr 1fr}
+/* アプリ（iOS）の中では、設定はアプリ側の画面に任せる */
+body.native #menu, body.native .sheet, body.native .shade{display:none!important}
 .card.in{-webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
 .card.out{-webkit-clip-path:inset(0 0 0 100%); clip-path:inset(0 0 0 100%); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
 .time{font-family:var(--font-d); font-weight:800; font-size:clamp(44px,15vw,84px); letter-spacing:.05em; line-height:1; font-variant-numeric:tabular-nums}
@@ -761,7 +763,7 @@ function syncUI(){
   elChime.textContent = tr('chime') + (state.chime ? ' ON' : ' OFF');
   document.querySelectorAll('#segStyle button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.style ? 'true' : 'false'));
   document.querySelectorAll('#segMood button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.mood ? 'true' : 'false'));
-  updateCaption();
+  updateCaption(); nativeNotify();
 }
 let sheetOpen = false, dimTimer = null;
 function wake(){
@@ -783,6 +785,7 @@ function nearGear(x, y){
   return x >= r.left - mx && x <= r.right + mx && y >= r.top - my && y <= r.bottom + my;
 }
 document.addEventListener('pointerdown', ev => {
+  if (window.__arNativeApp) return;   // アプリの中では、設定はアプリ側の画面で開く
   if (sheetOpen || !ev.isPrimary || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
   if (!$('start').hidden || !$('ask').hidden || !$('resume').hidden || !$('locAsk').hidden) return;   // 確認画面が出ている間は、そちらの操作を優先
   if (!nearGear(ev.clientX, ev.clientY)) return;
@@ -1128,6 +1131,7 @@ function syncSrc(){
   $('fxOld').setAttribute('aria-pressed', oldOn ? 'true' : 'false'); $('fxOld').textContent = tr('old');
   // 調整スライダーは、効く項目を選んでいるときだけ開く
   const opt = (id, on) => $(id).classList.toggle('on', !!on);
+  nativeNotify();
   opt('optMono', base === 'mono'); opt('optLine', look === 'manga' || look === 'pop'); opt('optGlitch', glitchOn); opt('optVig', vigOn); opt('optOld', oldOn); opt('optPunch', punchOn);
   $('fxPunch').setAttribute('aria-pressed', punchOn ? 'true' : 'false'); $('fxPunch').textContent = tr('punch');
   document.body.classList.toggle('k-knock', clockMode === 'cutout');
@@ -1481,13 +1485,14 @@ cv.addEventListener('webglcontextrestored', () => { initGL(); });
 const resumeBox = $('resume');
 function goAway(){
   if (!running || away || hold) return;
-  away = { cam:src.kind === 'camera' };
+  away = { cam:src.kind === 'camera', snd:A.playing };
   if (src.kind === 'camera'){ stopStream(); video.srcObject = null; }
   if (A.ctx) fadeAway();
   openSheet(false); cardsOff();
 }
 function comeBack(){
   if (!away || document.hidden) return;
+  if (window.__arNativeApp){ autoResume(); return; }
   resumeBox.hidden = false; $('resCam').hidden = !away.cam; $('resSnd').hidden = away.cam;
 }
 function resumeDone(){ resumeBox.hidden = true; away = null; lastSec = -1; restoreOut(); filePlay(); demoPlay(); syncSrc(); }
@@ -1514,6 +1519,63 @@ window.__ar = { set(b0, l0, g0, b, l, p){ base = b0; look = l0; glitchOn = !!g0;
 applyLang();
 if (!initGL()){ errKey = 'errGL'; msg.textContent = tr('errGL'); }
 if (labelsOn){ const c = getConsent(); if (c && c.v === 'yes') locate(); }
+/* ───────────── アプリ（iOS）との窓口 ─────────────
+   設定パネルの中身そのものを「設定の一覧」として読み出し、外から押したり動かしたりできるようにする。
+   アプリ側はこの一覧をそのまま自分の部品で描くので、Web に設定を足せばアプリにも出る。
+   アプリの中（window.__arNativeApp が立っている）では、Web 側の歯車と設定パネルは隠す */
+let arbN = 0;
+function schema(){
+  const groups = [];
+  document.querySelectorAll('.sheet-body > .grp').forEach(g => {
+    const items = [];
+    const walk = el => {
+      for (const c of el.children){
+        if (c.hidden) continue;
+        if (c.classList.contains('seg')){
+          const cols = c.classList.contains('three') ? 3 : (c.classList.contains('two') || c.classList.contains('grid2')) ? 2 : 0, bs = [];
+          for (const b of c.children){
+            if (b.hidden) continue;
+            if (b.tagName === 'BUTTON'){ if (!b.id) b.id = 'arb' + (arbN++); bs.push({ id:b.id, label:b.textContent.trim(), on:b.getAttribute('aria-pressed') === 'true' }); }
+            else if (b.tagName === 'LABEL' && b.htmlFor) bs.push({ id:b.htmlFor, label:b.textContent.trim(), on:false, file:true });
+          }
+          if (bs.length) items.push({ t:'buttons', cols, buttons:bs });
+        }
+        else if (c.classList.contains('opt')){ if (c.classList.contains('on') && c.firstElementChild) walk(c.firstElementChild); }
+        else if (c.classList.contains('lab')) items.push({ t:'label', text:c.textContent.trim() });
+        else if (c.classList.contains('slide')){
+          const i = c.querySelector('input'), sp = c.querySelectorAll('span'); if (!i) continue;
+          items.push({ t:'slider', id:i.id, min:+i.min, max:+i.max, step:+i.step || .01, value:+i.value, lo:sp[0] ? sp[0].textContent : '', hi:sp[1] ? sp[1].textContent : '' });
+        }
+        else if (c.classList.contains('note')){ const tx = c.textContent.trim(); if (tx) items.push({ t:'note', text:tx }); }
+      }
+    };
+    walk(g); const h = g.querySelector('h3');
+    if (items.length) groups.push({ title:h ? h.textContent.trim() : '', items });
+  });
+  return { v:1, running:!!running, lang:LANG, title:tr('settings'), close:tr('close'), groups };
+}
+function nativeNotify(){
+  if (!window.__arNativeApp) return;
+  clearTimeout(nativeNotify.t);
+  nativeNotify.t = setTimeout(() => { try{ window.webkit.messageHandlers.arclock.postMessage(JSON.stringify(schema())); }catch(e){} }, 40);
+}
+window.ARClock = {
+  schema,
+  tap(id){ const el = $(id); if (el) el.click(); return schema(); },
+  slide(id, v){ const el = $(id); if (el){ el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); } },
+  // 自動確認用：最初の画面を「サンプル映像」で通す
+  start(sound){ $('demoStart').click(); setTimeout(() => $(sound ? 'soundYes' : 'soundNo').click(), 200); }
+};
+if (window.__arNativeApp) document.body.classList.add('native');
+// アプリの中では、復帰のたびに確認を挟まず、止める前の状態（カメラ・音）に戻す
+function autoResume(){
+  const a = away;
+  const fin = () => {
+    if (a.snd){ clearInterval(A.timer); if (A.ctx){ try{ A.ctx.close(); }catch(e){} } A.ctx = null; A.playing = false; play(); }
+    resumeDone();
+  };
+  if (a.cam){ restarting = true; startCamera().then(() => { restarting = false; fin(); }); } else fin();
+}
 syncUI(); syncSrc(); wake(); tickClock();
 demoPlay();
 // カメラは、許可済みでも開いた瞬間には起動しない（最初の画面で選んでから）
