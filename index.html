@@ -1567,6 +1567,12 @@ window.ARClock = {
   start(sound){ $('demoStart').click(); setTimeout(() => $(sound ? 'soundYes' : 'soundNo').click(), 200); }
 };
 if (window.__arNativeApp) document.body.classList.add('native');
+// アプリの中では、ボタンや映像に指が触れたときに、端末の振動（触覚）をアプリ側に頼む
+if (window.__arNativeApp) document.addEventListener('click', ev => {
+  if (!ev.isTrusted || !ev.target.closest) return;
+  const b = ev.target.closest('button, label.btn, #gl'); if (!b) return;
+  try{ window.webkit.messageHandlers.haptic.postMessage(b.id === 'gl' ? 'soft' : 'tap'); }catch(e){}
+}, true);
 // アプリの中では、復帰のたびに確認を挟まず、止める前の状態（カメラ・音）に戻す
 function autoResume(){
   const a = away;
