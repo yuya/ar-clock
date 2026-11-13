@@ -6,7 +6,11 @@
 <meta name="theme-color" content="#101012">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>AR Clock</title>
+<title>AR CLOCK</title>
+<meta name="description" content="A clock, laid over the view through your camera.">
+<meta property="og:title" content="AR CLOCK">
+<meta property="og:description" content="A clock, laid over the view through your camera.">
+<meta name="apple-mobile-web-app-title" content="AR CLOCK">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
 <style>
 /* Layout: one manga panel filling the phone screen, showing the camera through a filter; every 10 seconds a flat time card wipes across. All controls live in a sheet that slides up from the bottom. Single black-and-white look by design. */
@@ -144,7 +148,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 
 </head>
 <body>
-<h1 class="sr" id="srtime">AR Clock</h1>
+<h1 class="sr" id="srtime">AR CLOCK</h1>
 <input type="file" id="file" class="sr" accept="image/*,video/*" tabindex="-1">
 
 <div class="app">
@@ -362,7 +366,7 @@ const STYLES = {
   piano:{ label:'ピアノ', tempo:1 }, marimba:{ label:'マリンバ', tempo:1 }, electro:{ label:'エレクトロ', tempo:1.04 },
   musicbox:{ label:'オルゴール', tempo:.8 }, lofi:{ label:'ローファイ', tempo:.82 },
   chip:{ label:'8bit', tempo:1.06 }, birds:{ label:'鳥のさえずり', tempo:.7 },
-  whistle:{ label:'口笛', tempo:.9 }, forest:{ label:'森のさえずり', tempo:.7 }
+  whistle:{ label:'口笛', tempo:.9 }, forest:{ label:'虫の声', tempo:.7 }
 };
 if (!STYLES[state.style]) state.style = 'piano';
 if (state.mood !== 'auto' && !MOODS[state.mood]) state.mood = 'auto';
@@ -664,10 +668,21 @@ function stop(){
 function fadeAway(){
   if (!A.ctx) return;
   const c = A.ctx, t = c.currentTime, g = A.out.gain;
-  try{ g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + .45); }catch(e){}
+  try{ g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + .3); }catch(e){}
   A.faded = true; A.playing = false; clearInterval(A.timer);
+  // 絞りきったら、音の仕組みそのものを閉じる（音量を下げるだけだと、端末によっては鳴り続けることがあるため）。
+  // 戻ってきたら作り直す
+  clearTimeout(A.closeT);
+  A.closeT = setTimeout(() => killAudio(c), 340);
   if (A.wake){ try{ A.wake.release(); }catch(e){} A.wake = null; }
   syncUI();
+}
+function killAudio(c){
+  c = c || A.ctx; if (!c) return;
+  clearTimeout(A.closeT); clearInterval(A.timer);
+  try{ c.suspend(); }catch(e){}
+  try{ c.close(); }catch(e){}
+  if (A.ctx === c){ A.ctx = null; A.playing = false; A.faded = false; A.stale = false; }
 }
 function restoreOut(){
   if (!A.ctx || !A.faded) return;
@@ -696,7 +711,7 @@ function beatPulse(){
 /* ───────────── 言語（既定は英語。設定で日本語に切り替え） ───────────── */
 const I18N = {
   en: {
-    desc:'Filters the view in front of you and shows the time every 10 seconds.', cam:'Start camera', pick:'Choose photo or video', demo:'Watch the sample',
+    desc:'A clock, laid over the view through your camera. Every ten seconds, the time.', cam:'Start camera', pick:'Choose photo or video', demo:'Watch the sample',
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
@@ -718,7 +733,7 @@ const I18N = {
     paused:'Paused', resumed:'Resumed', audioBack:'Sound resumed', hintAudio:'Tap to resume sound', hintPaused:'Paused · tap to resume', canvas:'Camera picture with filter'
   },
   ja: {
-    desc:'目の前の景色にフィルタをかけ、10秒ごとに時刻を出す時計です。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
+    desc:'カメラ越しの景色に、時計を重ねる。10秒ごとに、いまの時刻を。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
@@ -728,7 +743,7 @@ const I18N = {
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
     locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', strong:'強', fxNote:'映像を2回タップすると、その場でグリッチが走ります。1回タップは一時停止です。',
     gSrc:'映像', camBack:'外側カメラ', camFront:'内側カメラ',
-    gStyle:'音色', piano:'ピアノ', electro:'エレクトロ', musicbox:'オルゴール', birds:'鳥のさえずり', chip:'8bit', lofi:'ローファイ', whistle:'口笛', forest:'コオロギ', marimba:'マリンバ',
+    gStyle:'音色', piano:'ピアノ', electro:'エレクトロ', musicbox:'オルゴール', birds:'鳥のさえずり', chip:'8bit', lofi:'ローファイ', whistle:'口笛', forest:'虫の声', marimba:'マリンバ',
     gMood:'時間帯', auto:'自動', morning:'朝', day:'昼', evening:'夕', night:'夜', moodNote:'自動にすると、朝は速く明るく、夜は遅くやわらかく変わります。',
     gVol:'音量', gLang:'言語',
     errNoCam:'このブラウザではカメラを使えません。写真・動画を選ぶと試せます。', errDenied:'カメラが許可されていません。ブラウザの設定で許可してください。許可できない表示環境では、写真・動画を選ぶと試せます。',
@@ -782,7 +797,8 @@ let corner = store.get('menuPos', 'tr'); if (!['tl', 'tr', 'bl', 'br'].includes(
 elMenu.dataset.c = corner;
 // ホーム画面から開いたiPhoneでは、画面の端に固定した部品の「見た目」と「タップを受ける位置」がずれることがある。
 // そこで歯車への操作はボタン自身に頼らず、画面全体で指の位置を見て判定する（歯車のまわりを少し広めに取る）
-let drag = null, menuHandledAt = -1e9;
+let drag = null, menuHandledAt = -1e9, gearOpenT = null;
+function gearOpen(){ if (!gearOpenT) return; clearTimeout(gearOpenT); gearOpenT = null; openSheet(!sheetOpen); }
 function nearGear(x, y){
   const r = elMenu.getBoundingClientRect(), mx = 18, my = 56;
   return x >= r.left - mx && x <= r.right + mx && y >= r.top - my && y <= r.bottom + my;
@@ -805,7 +821,9 @@ function dragEnd(ev){
   if (!drag || (ev && ev.pointerId !== drag.id)) return;
   const d = drag; drag = null; menuHandledAt = performance.now();
   if (ev){ ev.preventDefault(); ev.stopPropagation(); }
-  if (!d.moved){ if (!ev || ev.type !== 'pointercancel') openSheet(!sheetOpen); return; }
+  // 触れて離しただけなら設定を開く。ただし直後に届く click を歯車が受け取ってから開く
+  // （先に開くと、その click が設定の幕に当たり、歯車に重ねた触覚用のスイッチが鳴らない）。click が来なければ少し待って開く
+  if (!d.moved){ if (!ev || ev.type !== 'pointercancel'){ clearTimeout(gearOpenT); gearOpenT = setTimeout(gearOpen, 350); } return; }
   const r0 = elMenu.getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
   corner = (cy < innerHeight / 2 ? 't' : 'b') + (cx < innerWidth / 2 ? 'l' : 'r'); store.set('menuPos', corner);
   elMenu.style.transform = ''; elMenu.dataset.c = corner;
@@ -816,7 +834,12 @@ function dragEnd(ev){
 }
 addEventListener('pointerup', dragEnd, true); addEventListener('pointercancel', dragEnd, true);
 // 歯車の操作のあとに続いて届く click は、映像（一時停止）に渡さない
-document.addEventListener('click', ev => { if (performance.now() - menuHandledAt < 600 && ev.target !== elMenu){ ev.preventDefault(); ev.stopPropagation(); } }, true);
+// （歯車に重ねた触覚用のスイッチは例外：切り替わらせないとカチッが鳴らない）
+document.addEventListener('click', ev => {
+  if (performance.now() - menuHandledAt >= 600) return;
+  if (elMenu.contains(ev.target)){ if (gearOpenT) setTimeout(gearOpen, 0); return; }
+  ev.preventDefault(); ev.stopPropagation();
+}, true);
 // キーボード（Enter・Space）での操作
 elMenu.addEventListener('click', () => { if (performance.now() - menuHandledAt > 600) openSheet(!sheetOpen); });
 $('close').addEventListener('click', () => openSheet(false));
@@ -1508,7 +1531,8 @@ $('resSndYes').addEventListener('click', () => {
   store.set('sound', '1'); state.chime = store.get('chime', '1') === '1'; play(); resumeDone();
 });
 $('resSndNo').addEventListener('click', () => { store.set('sound', '0'); state.chime = false; syncUI(); resumeDone(); });
-addEventListener('pagehide', goAway);
+// ページが閉じられる・ほかのページへ移るときは、待たずに音を止める
+addEventListener('pagehide', () => { goAway(); killAudio(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden){ goAway(); return; }
   if (away){ comeBack(); return; }
@@ -1583,7 +1607,7 @@ if (window.__arNativeApp) document.addEventListener('click', ev => {
 const IOS_WEB = !window.__arNativeApp && (/iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
 function hapticCover(){
   document.querySelectorAll('button').forEach(b => {
-    if (b.id === 'menu' || b.querySelector(':scope > .hx')) return;
+    if (b.querySelector(':scope > .hx')) return;
     const i = document.createElement('input');
     i.className = 'hx'; i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1; i.setAttribute('aria-hidden', 'true');
     b.appendChild(i);   // タップはこのスイッチに当たり、そのままボタンのクリックとして1回だけ伝わる
