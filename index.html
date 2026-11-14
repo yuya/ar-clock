@@ -711,7 +711,7 @@ function beatPulse(){
 /* ───────────── 言語（既定は英語。設定で日本語に切り替え） ───────────── */
 const I18N = {
   en: {
-    desc:'A clock, laid over the view through your camera. Every ten seconds, the time.', cam:'Start camera', pick:'Choose photo or video', demo:'Watch the sample',
+    desc:'A clock, laid over the view through your camera.', cam:'Start camera', pick:'Choose photo or video', demo:'Watch the sample',
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
@@ -733,7 +733,7 @@ const I18N = {
     paused:'Paused', resumed:'Resumed', audioBack:'Sound resumed', hintAudio:'Tap to resume sound', hintPaused:'Paused · tap to resume', canvas:'Camera picture with filter'
   },
   ja: {
-    desc:'カメラ越しの景色に、時計を重ねる。10秒ごとに、いまの時刻を。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
+    desc:'カメラ越しの景色に、時計を重ねる。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
@@ -755,7 +755,9 @@ const I18N = {
     paused:'一時停止', resumed:'再開', audioBack:'音を再開しました', hintAudio:'タップで音を再開', hintPaused:'一時停止中・タップで再開', canvas:'フィルタをかけたカメラ映像'
   }
 };
-let LANG = store.get('lang', 'en') === 'ja' ? 'ja' : 'en';
+// 最初の言語：設定で選んだ言語があればそれ。なければ端末・ブラウザの優先言語の先頭が日本語なら日本語、それ以外は英語
+const firstLang = () => { try{ const l = (navigator.languages && navigator.languages[0]) || navigator.language || ''; return /^ja\b/i.test(l) ? 'ja' : 'en'; }catch(e){ return 'en'; } };
+let LANG = store.get('lang', firstLang()) === 'ja' ? 'ja' : 'en';
 const tr = k => I18N[LANG][k] || I18N.en[k] || k;
 function applyLang(){
   document.documentElement.lang = LANG;
