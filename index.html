@@ -679,10 +679,13 @@ function fadeAway(){
 }
 function killAudio(c){
   c = c || A.ctx; if (!c) return;
-  clearTimeout(A.closeT); clearInterval(A.timer);
+  // 閉じるのは「裏に回ったときの」音の仕組みだけ。戻ってから作り直した新しい音は止めない
+  // （裏では時計が止まるので、閉じる予約が戻った直後に遅れて実行されることがある）
+  const cur = A.ctx === c;
+  if (cur){ clearTimeout(A.closeT); clearInterval(A.timer); }
   try{ c.suspend(); }catch(e){}
   try{ c.close(); }catch(e){}
-  if (A.ctx === c){ A.ctx = null; A.playing = false; A.faded = false; A.stale = false; }
+  if (cur){ A.ctx = null; A.playing = false; A.faded = false; A.stale = false; }
 }
 function restoreOut(){
   if (!A.ctx || !A.faded) return;
@@ -786,9 +789,11 @@ function syncUI(){
   updateCaption(); nativeNotify();
 }
 let sheetOpen = false, dimTimer = null;
+// しばらく触れないと設定ボタンを薄くする（アプリの中では、アプリ側のボタンにも知らせる）
+const toNative = m => { if (window.__arNativeApp) try{ window.webkit.messageHandlers.ui.postMessage(m); }catch(e){} };
 function wake(){
-  document.body.classList.remove('dim'); clearTimeout(dimTimer);
-  dimTimer = setTimeout(() => { if (!sheetOpen) document.body.classList.add('dim'); }, 5000);
+  document.body.classList.remove('dim'); clearTimeout(dimTimer); toNative('wake');
+  dimTimer = setTimeout(() => { if (!sheetOpen){ document.body.classList.add('dim'); toNative('dim'); } }, 5000);
 }
 function openSheet(o){
   sheetOpen = o; sheet.classList.toggle('open', o); shade.classList.toggle('open', o);
@@ -1590,7 +1595,12 @@ function nativeNotify(){
 }
 window.ARClock = {
   schema,
-  tap(id){ const el = $(id); if (el) el.click(); return schema(); },
+  tap(id){
+    // 裏から戻ったあとなどで音が止まったままなら、ここで作り直してから押す（音のボタンが効かなくならないように）
+    if (A.ctx && A.ctx.state !== 'running'){ clearInterval(A.timer); try{ A.ctx.close(); }catch(e){} A.ctx = null; A.playing = false; syncUI(); }
+    const el = $(id); if (el) el.click(); return schema();
+  },
+  wake(){ wake(); },
   slide(id, v){ const el = $(id); if (el){ el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); } },
   // 自動確認用：最初の画面を「サンプル映像」で通す
   start(sound){ $('demoStart').click(); setTimeout(() => $(sound ? 'soundYes' : 'soundNo').click(), 200); }
@@ -1622,11 +1632,13 @@ if (IOS_WEB){
 }
 // アプリの中では、復帰のたびに確認を挟まず、止める前の状態（カメラ・音）に戻す
 function autoResume(){
-  const a = away;
+  const a = away; clearTimeout(A.closeT);
   const fin = () => {
     if (a.snd){ clearInterval(A.timer); if (A.ctx){ try{ A.ctx.close(); }catch(e){} } A.ctx = null; A.playing = false; play(); }
     resumeDone();
   };
+  // アプリが音の出口を開き直すのを少し待ってから作り直す
+  if (a.snd && !a.cam){ setTimeout(fin, 350); return; }
   if (a.cam){ restarting = true; startCamera().then(() => { restarting = false; fin(); }); } else fin();
 }
 syncUI(); syncSrc(); wake(); tickClock();
