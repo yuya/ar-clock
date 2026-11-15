@@ -42,7 +42,8 @@ body{
 .tag{position:absolute; z-index:1; color:#fff; mix-blend-mode:difference; pointer-events:none;
   font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.18em; font-variant-numeric:tabular-nums}
 .tag.tl{left:max(16px,var(--sl)); top:calc(var(--st) + 22px)} .tag.br{right:max(16px,var(--sr)); bottom:calc(var(--sb) + 18px)}
-.hint{position:absolute; z-index:1; left:max(12px,var(--sl)); bottom:calc(var(--sb) + 12px); pointer-events:none; font-size:12px; padding:7px 12px}
+body{--hx:0px} body[data-gear="bl"]{--hx:54px} body.hasflip{--hx:54px} body.hasflip[data-gear="bl"]{--hx:108px}
+.hint{position:absolute; z-index:1; left:calc(max(12px,var(--sl)) + var(--hx)); bottom:calc(var(--sb) + 12px); pointer-events:none; font-size:12px; padding:7px 12px}
 
 button, label.btn{
   font:inherit; font-size:14px; color:var(--ink); background:var(--paper); margin:0;
@@ -77,7 +78,12 @@ body.k-knock .sub{display:none}
 .hxon button{position:relative}
 .hx{position:absolute; left:0; top:0; width:100%; height:100%; margin:0; padding:0; opacity:0; cursor:pointer; -webkit-tap-highlight-color:transparent}
 /* アプリ（iOS）の中では、設定はアプリ側の画面に任せる */
-body.native #menu, body.native .sheet, body.native .shade{display:none!important}
+body.native #menu, body.native #flip, body.native .sheet, body.native .shade{display:none!important}
+/* アプリでは状態バーを隠しているので、場所はダイナミックアイランド（ノッチ）の左に、日付は画面のいちばん下に置く */
+body.native .tag.tl{top:calc(var(--st) * .47)}
+body.native .tag.br{bottom:calc(var(--sb) * .3 + 8px)}
+/* ヒントは、アプリ側のボタン（歯車・カメラ切り替え）の上へ */
+body.native .hint{left:max(12px,var(--sl)); bottom:calc(var(--sb) + 70px)}
 .card.in{-webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
 .card.out{-webkit-clip-path:inset(0 0 0 100%); clip-path:inset(0 0 0 100%); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
 .time{font-family:var(--font-d); font-weight:800; font-size:clamp(44px,15vw,84px); letter-spacing:.05em; line-height:1; font-variant-numeric:tabular-nums}
@@ -90,7 +96,10 @@ body.native #menu, body.native .sheet, body.native .shade{display:none!important
 #menu[data-c="br"]{bottom:calc(var(--sb) + 14px); right:max(12px,var(--sr))} #menu[data-c="bl"]{bottom:calc(var(--sb) + 14px); left:max(12px,var(--sl))}
 #menu{position:fixed; z-index:5; width:44px; height:44px; padding:0; touch-action:none; cursor:grab;
   min-height:44px; padding:8px 14px; font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.14em; transition:opacity .6s}
-.dim #menu{opacity:.4}
+.dim #menu, .dim #flip{opacity:.4}
+/* 前面・背面カメラの切り替え：左下 */
+#flip{position:fixed; z-index:5; left:max(12px,var(--sl)); bottom:calc(var(--sb) + 14px); width:44px; height:44px; padding:0; min-height:44px; touch-action:none; transition:opacity .6s; display:inline-flex; align-items:center; justify-content:center}
+body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
 
 /* 下からせり上がるシート */
 .shade{position:fixed; inset:0; z-index:6; cursor:pointer; background:transparent; opacity:0; visibility:hidden; transition:opacity .25s, visibility 0s .25s}
@@ -129,12 +138,12 @@ body.native #menu, body.native .sheet, body.native .shade{display:none!important
 input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 /* ガラス調のUI：半透明の面（ぼかし入り）の上に、半透明の操作部を重ねる */
 :root{ --glass:rgba(24,24,28,.5); --glass-2:rgba(255,255,255,.15); --glass-line:rgba(255,255,255,.24); --on:#fff }
-.sheet, .start, #menu, .toast, .hint{ background:var(--glass); color:var(--on); border:1px solid var(--glass-line);
+.sheet, .start, #menu, #flip, .toast, .hint{ background:var(--glass); color:var(--on); border:1px solid var(--glass-line);
   -webkit-backdrop-filter:blur(18px) saturate(1.6); backdrop-filter:blur(18px) saturate(1.6); box-shadow:0 10px 40px rgba(0,0,0,.3) }
 .sheet{ border-width:1px 0 0; border-radius:28px 28px 0 0 }
 .sheet-head{ background:transparent; border-bottom:1px solid var(--glass-line) }
 .start{ border-radius:28px }
-#menu, .toast, .hint{ border-radius:999px }
+#menu, #flip, .toast, .hint{ border-radius:999px }
 .sheet button, .sheet label.btn, .start button, .start label.btn{ background:var(--glass-2); color:var(--on); border:1px solid var(--glass-line); border-radius:16px }
 .sheet button[aria-pressed="true"], .start .primary{ background:rgba(255,255,255,.9); color:#111; border-color:transparent }
 .grp h3, .note, .lab{ background:transparent; padding:0; color:rgba(255,255,255,.82) }
@@ -202,6 +211,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
   </div>
 </div>
 <button type="button" id="menu" data-c="tr" data-i18n-label="settings" aria-expanded="false" aria-controls="sheet"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M19.15 10.08 L21.88 10.44 L21.88 13.56 L19.15 13.92 L18.41 15.70 L20.09 17.88 L17.88 20.09 L15.70 18.41 L13.92 19.15 L13.56 21.88 L10.44 21.88 L10.08 19.15 L8.30 18.41 L6.12 20.09 L3.91 17.88 L5.59 15.70 L4.85 13.92 L2.12 13.56 L2.12 10.44 L4.85 10.08 L5.59 8.30 L3.91 6.12 L6.12 3.91 L8.30 5.59 L10.08 4.85 L10.44 2.12 L13.56 2.12 L13.92 4.85 L15.70 5.59 L17.88 3.91 L20.09 6.12 L18.41 8.30Z M12 8.3a3.7 3.7 0 1 0 0 7.4a3.7 3.7 0 1 0 0-7.4Z"/></svg></button>
+<button type="button" id="flip" hidden data-i18n-label="flip"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.2h6l1.3 1.9H19a1.6 1.6 0 0 1 1.6 1.6v8.2A1.6 1.6 0 0 1 19 18.5H5a1.6 1.6 0 0 1-1.6-1.6V8.7A1.6 1.6 0 0 1 5 7.1h2.7z"/><path d="M9.2 12.6a3 3 0 0 1 5-1.8l.6.6M14.8 12.2a3 3 0 0 1-5 1.8l-.6-.6"/><path d="M14.9 9.7v1.7h-1.7M9.1 14.5v-1.7h1.7"/></svg></button>
 <div class="toast" id="toast" role="status"></div>
 <div class="shade" id="shade"></div>
 <section class="sheet" id="sheet" data-i18n-label="settings">
@@ -716,7 +726,7 @@ const I18N = {
   en: {
     desc:'A clock, laid over the view through your camera.', cam:'Start camera', pick:'Choose photo or video', demo:'Watch the sample',
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
-    settings:'Settings', close:'Close', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
+    settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
     gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', fish:'Fisheye',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
@@ -738,7 +748,7 @@ const I18N = {
   ja: {
     desc:'カメラ越しの景色に、時計を重ねる。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
-    settings:'設定', close:'閉じる', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
+    settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
     gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', fish:'魚眼',
     lineW:'線の太さ', thin:'細', thick:'太',
@@ -801,7 +811,7 @@ function openSheet(o){
 }
 // 設定ボタンはつかんで動かせる。離すと、いちばん近い画面の角に吸い付く
 let corner = store.get('menuPos', 'tr'); if (!['tl', 'tr', 'bl', 'br'].includes(corner)) corner = 'tr';
-elMenu.dataset.c = corner;
+elMenu.dataset.c = corner; document.body.dataset.gear = corner;
 // ホーム画面から開いたiPhoneでは、画面の端に固定した部品の「見た目」と「タップを受ける位置」がずれることがある。
 // そこで歯車への操作はボタン自身に頼らず、画面全体で指の位置を見て判定する（歯車のまわりを少し広めに取る）
 let drag = null, menuHandledAt = -1e9, gearOpenT = null;
@@ -833,7 +843,7 @@ function dragEnd(ev){
   if (!d.moved){ if (!ev || ev.type !== 'pointercancel'){ clearTimeout(gearOpenT); gearOpenT = setTimeout(gearOpen, 350); } return; }
   const r0 = elMenu.getBoundingClientRect(), cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
   corner = (cy < innerHeight / 2 ? 't' : 'b') + (cx < innerWidth / 2 ? 'l' : 'r'); store.set('menuPos', corner);
-  elMenu.style.transform = ''; elMenu.dataset.c = corner;
+  elMenu.style.transform = ''; elMenu.dataset.c = corner; document.body.dataset.gear = corner;
   const r1 = elMenu.getBoundingClientRect();
   elMenu.style.transform = 'translate(' + (r0.left - r1.left) + 'px,' + (r0.top - r1.top) + 'px)'; void elMenu.offsetWidth;
   elMenu.style.transition = reduce ? 'none' : 'transform .32s cubic-bezier(.2,.9,.3,1.25)'; elMenu.style.transform = '';
@@ -845,6 +855,7 @@ addEventListener('pointerup', dragEnd, true); addEventListener('pointercancel', 
 document.addEventListener('click', ev => {
   if (performance.now() - menuHandledAt >= 600) return;
   if (elMenu.contains(ev.target)){ if (gearOpenT) setTimeout(gearOpen, 0); return; }
+  if (ev.target.closest && ev.target.closest('#flip')) return;
   ev.preventDefault(); ev.stopPropagation();
 }, true);
 // キーボード（Enter・Space）での操作
@@ -905,7 +916,7 @@ const DX = demo.getContext('2d'), still = document.createElement('canvas');
 let src = { kind:'demo' }, stream = null, stillDirty = false, running = false, wakeLock = null, away = null;
 let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environment';
 // 見た目は3つの組み合わせ：ベース（カラー/モノクロ）× フィルタ × グリッチ。以前の単一フィルタ設定は読み替える
-const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:['mono', 'none', '1'], mono:['mono', 'none', '0'], pop:['color', 'pop', '0'], film:['color', 'film', '0'], none:['color', 'none', '0'] }[store.get('fx', '')] || ['color', 'none', '0'];   // 初めての人は、フィルタなしのカラーから
+const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:['mono', 'none', '1'], mono:['mono', 'none', '0'], pop:['color', 'pop', '0'], film:['color', 'film', '0'], none:['color', 'none', '0'] }[store.get('fx', '')] || ['color', 'none', '1'];   // 初めての人は、フィルタなしのカラーから
 let base = store.get('base', OLD[0]) === 'color' ? 'color' : 'mono', look = store.get('look', OLD[1]), glitchOn = store.get('glitch', OLD[2]) === '1';
 if (!['none', 'film', 'vivid', 'manga', 'pop', 'mini', 'fish'].includes(look)) look = 'none';
 
@@ -920,6 +931,7 @@ const prime = () => { if (store.get('sound', '') === '1') initAudio(); };   // �
 function startRun(sound){
   ask.hidden = true;
   if (!running){ running = true; sceneT0 = performance.now() / 1000; }
+  syncSrc();
   if (sound && !A.playing) play();   // まだ画面に触れていない場合は、次に触れた瞬間に鳴り始める
 }
 $('soundYes').addEventListener('click', () => { store.set('sound', '1'); state.chime = store.get('chime', '1') === '1'; syncUI(); startRun(true); });
@@ -1032,6 +1044,32 @@ setInterval(watchdog, 1000);
 $('camStart').addEventListener('click', () => { prime(); startCamera(); });
 $('demoStart').addEventListener('click', () => { prime(); src = { kind:'demo' }; begin(); });
 document.querySelectorAll('label[for=file]').forEach(l => l.addEventListener('click', prime));
+// 前面・背面カメラの切り替え（左下のボタン。カメラを映しているときだけ出す）
+const flipBtn = $('flip');
+let flipAt = -1e9;
+function flipCamera(){
+  const now = performance.now(); if (now - flipAt < 500 || src.kind !== 'camera') return; flipAt = now;
+  facing = facing === 'user' ? 'environment' : 'user';
+  if (frozen) setFrozen(false);
+  startCamera(); wake();
+}
+flipBtn.addEventListener('click', flipCamera);
+// ホーム画面から開いたiPhoneでは、画面の端に固定した部品の「見た目」と「タップを受ける位置」がずれることがある。
+// 歯車と同じく、指の位置でも受ける（二重に動かないよう flipCamera 側で 0.5 秒は受け付けない）
+let flipDrag = null;
+const nearFlip = (x, y) => { if (flipBtn.hidden) return false; const r = flipBtn.getBoundingClientRect(); return x >= r.left - 14 && x <= r.right + 14 && y >= r.top - 40 && y <= r.bottom + 40; };
+document.addEventListener('pointerdown', ev => {
+  if (!ev.isPrimary || flipBtn.hidden || sheetOpen) return;
+  if (!$('start').hidden || !$('ask').hidden || !$('resume').hidden || !$('locAsk').hidden) return;
+  if (!nearFlip(ev.clientX, ev.clientY)) return;
+  flipDrag = { id:ev.pointerId, x:ev.clientX, y:ev.clientY }; ev.stopPropagation();   // 映像の一時停止に渡さない
+}, true);
+document.addEventListener('pointerup', ev => {
+  if (!flipDrag || ev.pointerId !== flipDrag.id) return;
+  const d = flipDrag; flipDrag = null; menuHandledAt = performance.now();
+  if (Math.hypot(ev.clientX - d.x, ev.clientY - d.y) < 10 && nearFlip(ev.clientX, ev.clientY)) flipCamera();
+  ev.stopPropagation();
+}, true);
 $('segSrc').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
   if (b.dataset.v === 'demo'){ stopStream(); video.pause(); video.srcObject = null; pp.rev = false; src = { kind:'demo' }; if (frozen) setFrozen(false); syncSrc(); return; }
@@ -1156,6 +1194,7 @@ function syncSrc(){
   if (src.kind !== 'demo') demoVid.pause(); else demoPlay();
   $('labelsBtn').setAttribute('aria-pressed', labelsOn ? 'true' : 'false'); $('labelsBtn').textContent = tr('labels') + (labelsOn ? ' ON' : ' OFF');
   updateTag();
+  flipBtn.hidden = !(running && src.kind === 'camera'); document.body.classList.toggle('hasflip', !flipBtn.hidden);
   document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', (b.dataset.v === 'demo' ? src.kind === 'demo' : src.kind === 'camera' && b.dataset.v === facing) ? 'true' : 'false'));
   document.querySelectorAll('#segBase button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === base ? 'true' : 'false'));
   document.querySelectorAll('#segLook button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === look ? 'true' : 'false'));
@@ -1586,7 +1625,7 @@ function schema(){
     walk(g); const h = g.querySelector('h3');
     if (items.length) groups.push({ title:h ? h.textContent.trim() : '', items });
   });
-  return { v:1, running:!!running, lang:LANG, title:tr('settings'), close:tr('close'), groups };
+  return { v:1, running:!!running, camera:src.kind === 'camera' ? facing : null, lang:LANG, title:tr('settings'), close:tr('close'), groups };
 }
 function nativeNotify(){
   if (!window.__arNativeApp) return;
@@ -1601,6 +1640,7 @@ window.ARClock = {
     const el = $(id); if (el) el.click(); return schema();
   },
   wake(){ wake(); },
+  flip(){ flipCamera(); },
   slide(id, v){ const el = $(id); if (el){ el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); } },
   // 自動確認用：最初の画面を「サンプル映像」で通す
   start(sound){ $('demoStart').click(); setTimeout(() => $(sound ? 'soundYes' : 'soundNo').click(), 200); }
