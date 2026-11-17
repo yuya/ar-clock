@@ -224,10 +224,6 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 <div class="toast" id="toast" role="status"></div>
 <div class="rec" id="rec" hidden><i></i><span id="recT">REC 0:00</span></div>
 <div class="recbar" id="recBar" hidden><b id="recFill"></b></div>
-<div class="clipbar" id="clipBar" hidden>
-  <button type="button" id="clipShare" class="primary" data-i18n="clipShare"></button>
-  <button type="button" id="clipClose" data-i18n="clipClose"></button>
-</div>
 <div class="shade" id="shade"></div>
 <section class="sheet" id="sheet" data-i18n-label="settings">
   <div class="sheet-head"><h2 data-i18n="settings"></h2><button type="button" id="close" data-i18n="close"></button></div>
@@ -1581,8 +1577,8 @@ function frame(ms){
 // ── 長押しクリップ：画面を長押ししている間（最大10秒）、フィルタをかける前の映像だけを録る。離すと再生・共有できる
 const canClip = !!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream && typeof MediaRecorder.isTypeSupported === 'function') && !window.__arNativeApp;
 const CLIP_MIMES = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm'];
-const CLIP_MAX = 10, CLIP_MIN = .5, CLIP_HOLD = 350;
-let rc = null, clipPrev = null, clipSupUntil = -1e9, clipUrl = null, clipFile = null;
+const CLIP_MAX = 4, CLIP_MIN = .5, CLIP_HOLD = 350;
+let rc = null, clipPrev = null, clipSupUntil = -1e9, clipUrl = null;
 const srcEl = () => src.kind === 'demo' ? demoVid : (src.kind === 'camera' || src.kind === 'file') ? video : null;
 function clipDraw(){
   const v = srcEl(); if (!rc || !v || !v.videoWidth) return;
@@ -1628,18 +1624,15 @@ function clipDone(c){
   if (c.done) return; c.done = true;
   if (c.short){ say(tr('clipShort')); return; }
   if (c.discard || !c.chunks.length) return;
-  const ext = c.mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm', d = new Date(), z = n => String(n).padStart(2, '0');
-  const name = 'arclock-' + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds()) + '.' + ext;
   const blob = new Blob(c.chunks, { type:c.mime.split(';')[0] });
-  clipFile = new File([blob], name, { type:blob.type }); clipUrl = URL.createObjectURL(blob);
+  clipUrl = URL.createObjectURL(blob);
   // 録った映像を「ファイルの映像」として流し直す。フィルタ・ビートパンチ・時計は、ふだんの映像と同じようにかかる
   clipPrev = { kind:src.kind, url:src.kind === 'file' ? video.currentSrc || video.src : '' };
-  stopStream(); video.srcObject = null; video._noRev = false; video._rs = 0; video.src = clipUrl; video.loop = false; video.muted = true; video.removeAttribute('loop');
+  stopStream(); video.srcObject = null; video._noRev = true; video._rs = 0; video.src = clipUrl; video.loop = false; video.muted = true; video.removeAttribute('loop');
   pp.rev = false; video.play().catch(() => {}); src = { kind:'file', clip:true }; if (frozen) setFrozen(false); begin();
-  $('clipBar').hidden = false;
 }
 function clipDispose(){
-  $('clipBar').hidden = true; if (clipUrl) URL.revokeObjectURL(clipUrl); clipUrl = null; clipFile = null;
+  if (clipUrl) URL.revokeObjectURL(clipUrl); clipUrl = null;
 }
 function clipClose(){
   const p = clipPrev; clipPrev = null; clipDispose();
@@ -1647,12 +1640,6 @@ function clipClose(){
   if (p && p.kind === 'file' && p.url){ video.src = p.url; video._noRev = false; video._rs = 0; pp.rev = false; video.play().catch(() => {}); src = { kind:'file' }; syncSrc(); return; }
   stopStream(); video.pause(); video.srcObject = null; pp.rev = false; src = { kind:'demo' }; syncSrc();
 }
-$('clipClose').addEventListener('click', clipClose);
-$('clipShare').addEventListener('click', () => {
-  if (!clipFile) return;
-  if (navigator.canShare && navigator.canShare({ files:[clipFile] })){ navigator.share({ files:[clipFile] }).catch(() => {}); return; }
-  const a = document.createElement('a'); a.href = clipUrl; a.download = clipFile.name; document.body.appendChild(a); a.click(); a.remove();
-});
 let clipDown = null;
 cv.addEventListener('pointerdown', ev => {
   if (!canClip || !ev.isPrimary || rc || clipDown) return;
@@ -1673,9 +1660,10 @@ addEventListener('pagehide', () => { if (clipDown){ clearTimeout(clipDown.timer)
 cv.addEventListener('click', () => {
   if (performance.now() < clipSupUntil){ if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; } return; }
   if (performance.now() - (A.unlockedAt || -1e9) < 700){ say(tr('audioBack')); return; }   // 止められていた音を戻すためのタップは、それだけに使う
+  if (src.kind === 'file' && src.clip){ clipClose(); return; }   // クリップ再生中は、ワンタップで元の映像へ
   if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; burst = 1; tap = 1; return; }
   { const v = pv(); if (v && v.paused && !pp.rev && !held()) v.play().catch(() => {}); }   // 映像が止まっていたら、このタップの中で動かし直す
-  tapTimer = setTimeout(() => { tapTimer = null; setFrozen(!frozen); }, 270);
+  tapTimer = setTimeout(() => { tapTimer = null; }, 270);   // 一時停止は廃止。2回続けたときだけグリッチ
 });
 cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); gl = null; });
 cv.addEventListener('webglcontextrestored', () => { initGL(); });
