@@ -126,6 +126,15 @@ body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
   background:var(--ink); color:var(--paper); padding:8px 14px; font-size:13px; letter-spacing:.06em; text-align:center; pointer-events:none;
   opacity:0; transition:opacity .25s, transform .25s}
 .toast.show{opacity:1; transform:translate(-50%,0)}
+.rec{position:fixed; z-index:8; left:50%; top:calc(var(--st) + 18px); transform:translateX(-50%); display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:99px; background:rgba(0,0,0,.55); color:#fff; font:800 12px/1 Archivo,sans-serif; letter-spacing:.18em; pointer-events:none}
+.rec i{width:9px; height:9px; border-radius:50%; background:#ff3b30; animation:recb 1s steps(2) infinite}
+@keyframes recb{50%{opacity:.2}}
+.recbar{position:fixed; z-index:8; left:0; right:0; top:0; height:3px; pointer-events:none; background:rgba(255,255,255,.25)}
+.recbar b{display:block; height:100%; width:0; background:#ff3b30}
+.clipbar{position:fixed; z-index:6; left:50%; transform:translateX(-50%); bottom:calc(var(--sb) + 16px); display:flex; gap:8px; padding:8px; border-radius:99px}
+.clipbar button{white-space:nowrap; min-height:44px; padding:0 18px; border-radius:99px; font:800 13px/1 Archivo,sans-serif; letter-spacing:.08em}
+.dim .clipbar{opacity:.5}
+.stage, #gl{-webkit-touch-callout:none}
 .seg{display:flex; flex-wrap:wrap; gap:8px}
 .seg.two > *{flex:1 1 0}
 .note{margin:0; font-size:12px; font-weight:500; color:var(--mute); line-height:1.5}
@@ -138,7 +147,7 @@ body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
 input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 /* ガラス調のUI：半透明の面（ぼかし入り）の上に、半透明の操作部を重ねる */
 :root{ --glass:rgba(24,24,28,.5); --glass-2:rgba(255,255,255,.15); --glass-line:rgba(255,255,255,.24); --on:#fff }
-.sheet, .start, #menu, #flip, .toast, .hint{ background:var(--glass); color:var(--on); border:1px solid var(--glass-line);
+.sheet, .start, #menu, #flip, .toast, .hint, .clipbar{ background:var(--glass); color:var(--on); border:1px solid var(--glass-line);
   -webkit-backdrop-filter:blur(18px) saturate(1.6); backdrop-filter:blur(18px) saturate(1.6); box-shadow:0 10px 40px rgba(0,0,0,.3) }
 .sheet{ border-width:1px 0 0; border-radius:28px 28px 0 0 }
 .sheet-head{ background:transparent; border-bottom:1px solid var(--glass-line) }
@@ -213,6 +222,12 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 <button type="button" id="menu" data-c="tr" data-i18n-label="settings" aria-expanded="false" aria-controls="sheet"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M19.15 10.08 L21.88 10.44 L21.88 13.56 L19.15 13.92 L18.41 15.70 L20.09 17.88 L17.88 20.09 L15.70 18.41 L13.92 19.15 L13.56 21.88 L10.44 21.88 L10.08 19.15 L8.30 18.41 L6.12 20.09 L3.91 17.88 L5.59 15.70 L4.85 13.92 L2.12 13.56 L2.12 10.44 L4.85 10.08 L5.59 8.30 L3.91 6.12 L6.12 3.91 L8.30 5.59 L10.08 4.85 L10.44 2.12 L13.56 2.12 L13.92 4.85 L15.70 5.59 L17.88 3.91 L20.09 6.12 L18.41 8.30Z M12 8.3a3.7 3.7 0 1 0 0 7.4a3.7 3.7 0 1 0 0-7.4Z"/></svg></button>
 <button type="button" id="flip" hidden data-i18n-label="flip"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.2h6l1.3 1.9H19a1.6 1.6 0 0 1 1.6 1.6v8.2A1.6 1.6 0 0 1 19 18.5H5a1.6 1.6 0 0 1-1.6-1.6V8.7A1.6 1.6 0 0 1 5 7.1h2.7z"/><path d="M9.2 12.6a3 3 0 0 1 5-1.8l.6.6M14.8 12.2a3 3 0 0 1-5 1.8l-.6-.6"/><path d="M14.9 9.7v1.7h-1.7M9.1 14.5v-1.7h1.7"/></svg></button>
 <div class="toast" id="toast" role="status"></div>
+<div class="rec" id="rec" hidden><i></i><span id="recT">REC 0:00</span></div>
+<div class="recbar" id="recBar" hidden><b id="recFill"></b></div>
+<div class="clipbar" id="clipBar" hidden>
+  <button type="button" id="clipShare" class="primary" data-i18n="clipShare"></button>
+  <button type="button" id="clipClose" data-i18n="clipClose"></button>
+</div>
 <div class="shade" id="shade"></div>
 <section class="sheet" id="sheet" data-i18n-label="settings">
   <div class="sheet-head"><h2 data-i18n="settings"></h2><button type="button" id="close" data-i18n="close"></button></div>
@@ -407,6 +422,7 @@ function initAudio(){
   A.out = c.createGain(); A.out.gain.value = state.vol;
   A.comp = c.createDynamicsCompressor(); A.comp.threshold.value = -14; A.comp.ratio.value = 4;
   A.comp.connect(A.out); A.out.connect(c.destination);
+  try{ A.rec = c.createMediaStreamDestination(); A.out.connect(A.rec); }catch(e){ A.rec = null; }   // 長押しクリップ用の分岐（スピーカーへの出力はそのまま）
   A.music = c.createGain(); A.music.gain.value = 0;
   A.lp = c.createBiquadFilter(); A.lp.type = 'lowpass'; A.lp.frequency.value = 8000; A.lp.Q.value = .3;
   A.music.connect(A.lp); A.lp.connect(A.comp);
@@ -730,7 +746,7 @@ const I18N = {
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
-    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', fish:'Fisheye', bit:'Black & white (2-tone)', gb:'Handheld game',
+    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', clipShare:'Share', clipClose:'Close', clipFail:"Couldn't record", clipShort:'Too short', fish:'Fisheye', bit:'Black & white (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
@@ -752,7 +768,7 @@ const I18N = {
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
-    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', fish:'魚眼', bit:'白黒2色', gb:'携帯ゲーム機',
+    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', clipShare:'共有・保存', clipClose:'閉じる', clipFail:'録画できませんでした', clipShort:'短すぎました', fish:'魚眼', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
@@ -1196,6 +1212,7 @@ function syncSrc(){
   if (src.kind !== 'demo') demoVid.pause(); else demoPlay();
   $('labelsBtn').setAttribute('aria-pressed', labelsOn ? 'true' : 'false'); $('labelsBtn').textContent = tr('labels') + (labelsOn ? ' ON' : ' OFF');
   updateTag();
+  if (clipUrl && !(src.kind === 'file' && src.clip)) clipDispose();
   flipBtn.hidden = !(running && src.kind === 'camera'); document.body.classList.toggle('hasflip', !flipBtn.hidden);
   document.querySelectorAll('#segSrc button').forEach(b => b.setAttribute('aria-pressed', (b.dataset.v === 'demo' ? src.kind === 'demo' : src.kind === 'camera' && b.dataset.v === facing) ? 'true' : 'false'));
   document.querySelectorAll('#segBase button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === base ? 'true' : 'false'));
@@ -1558,8 +1575,103 @@ function frame(ms){
   burst *= Math.exp(-dt * 4); tap *= Math.exp(-dt * 4); lines *= Math.exp(-dt * 1.6);
   if (!gl) return;
   render(now);
+  if (rc) clipDraw();
 }
+
+// ── 長押しクリップ：画面を長押ししている間（最大10秒）、フィルタをかける前の映像だけを録る。離すと再生・共有できる
+const canClip = !!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream && typeof MediaRecorder.isTypeSupported === 'function') && !window.__arNativeApp;
+const CLIP_MIMES = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm'];
+const CLIP_MAX = 10, CLIP_MIN = .5, CLIP_HOLD = 350;
+let rc = null, clipPrev = null, clipSupUntil = -1e9, clipUrl = null, clipFile = null;
+const srcEl = () => src.kind === 'demo' ? demoVid : (src.kind === 'camera' || src.kind === 'file') ? video : null;
+function clipDraw(){
+  const v = srcEl(); if (!rc || !v || !v.videoWidth) return;
+  const c = rc;
+  if (!c.w){   // 最初に映像が来た時点で、元の縦横比のまま長辺720pxまでに縮めて決める
+    const k = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight));
+    c.w = Math.max(2, Math.round(v.videoWidth * k / 2) * 2); c.h = Math.max(2, Math.round(v.videoHeight * k / 2) * 2);
+    c.cv.width = c.w; c.cv.height = c.h; c.begin();
+  }
+  c.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (src.kind === 'camera' && src.mirror){ c.ctx.translate(c.w, 0); c.ctx.scale(-1, 1); }   // 画面で見えているのと同じ向き
+  c.ctx.drawImage(v, 0, 0, c.w, c.h);
+}
+function clipStart(pid){
+  const mime = CLIP_MIMES.find(m => MediaRecorder.isTypeSupported(m)); if (!mime) return;
+  const c = rc = { pid, mime, chunks:[], t0:performance.now(), cv:document.createElement('canvas'), w:0, h:0, rec:null, timer:null, tick:null, discard:false };
+  c.ctx = c.cv.getContext('2d');
+  c.begin = () => {
+    try{
+      const vs = c.cv.captureStream(30), tracks = vs.getVideoTracks().slice();
+      const useAudio = !!(A.rec && A.ctx && A.ctx.state === 'running'); if (useAudio) A.rec.stream.getAudioTracks().forEach(t => tracks.push(t));
+      const opt = { mimeType:mime, videoBitsPerSecond:4000000 }; if (useAudio) opt.audioBitsPerSecond = 128000;
+      c.rec = new MediaRecorder(new MediaStream(tracks), opt);
+      c.rec.ondataavailable = e => { if (e.data && e.data.size) c.chunks.push(e.data); };
+      c.rec.onerror = () => { clipEnd(true); say(tr('clipFail')); };
+      c.rec.onstop = () => clipDone(c);
+      c.t0 = performance.now(); c.rec.start(250);
+    }catch(e){ clipEnd(true); say(tr('clipFail')); }
+  };
+  $('rec').hidden = false; $('recBar').hidden = false;
+  c.tick = setInterval(() => { const s = Math.min(CLIP_MAX, (performance.now() - c.t0) / 1000); $('recT').textContent = 'REC 0:' + String(Math.floor(s)).padStart(2, '0'); $('recFill').style.width = (s / CLIP_MAX * 100) + '%'; }, 100);
+  c.timer = setTimeout(() => clipEnd(false), CLIP_MAX * 1000);
+  try{ cv.setPointerCapture(pid); }catch(e){}
+}
+function clipEnd(discard){
+  const c = rc; if (!c) return; rc = null;
+  clearTimeout(c.timer); clearInterval(c.tick); $('rec').hidden = true; $('recBar').hidden = true; $('recFill').style.width = '0';
+  c.discard = discard || (performance.now() - c.t0) / 1000 < CLIP_MIN;
+  c.short = !discard && c.discard;
+  if (c.rec && c.rec.state !== 'inactive'){ try{ c.rec.stop(); }catch(e){ clipDone(c); } } else clipDone(c);
+}
+function clipDone(c){
+  if (c.done) return; c.done = true;
+  if (c.short){ say(tr('clipShort')); return; }
+  if (c.discard || !c.chunks.length) return;
+  const ext = c.mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm', d = new Date(), z = n => String(n).padStart(2, '0');
+  const name = 'arclock-' + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds()) + '.' + ext;
+  const blob = new Blob(c.chunks, { type:c.mime.split(';')[0] });
+  clipFile = new File([blob], name, { type:blob.type }); clipUrl = URL.createObjectURL(blob);
+  // 録った映像を「ファイルの映像」として流し直す。フィルタ・ビートパンチ・時計は、ふだんの映像と同じようにかかる
+  clipPrev = { kind:src.kind, url:src.kind === 'file' ? video.currentSrc || video.src : '' };
+  stopStream(); video.srcObject = null; video._noRev = false; video._rs = 0; video.src = clipUrl; video.loop = false; video.muted = true; video.removeAttribute('loop');
+  pp.rev = false; video.play().catch(() => {}); src = { kind:'file', clip:true }; if (frozen) setFrozen(false); begin();
+  $('clipBar').hidden = false;
+}
+function clipDispose(){
+  $('clipBar').hidden = true; if (clipUrl) URL.revokeObjectURL(clipUrl); clipUrl = null; clipFile = null;
+}
+function clipClose(){
+  const p = clipPrev; clipPrev = null; clipDispose();
+  if (p && p.kind === 'camera'){ startCamera(); return; }
+  if (p && p.kind === 'file' && p.url){ video.src = p.url; video._noRev = false; video._rs = 0; pp.rev = false; video.play().catch(() => {}); src = { kind:'file' }; syncSrc(); return; }
+  stopStream(); video.pause(); video.srcObject = null; pp.rev = false; src = { kind:'demo' }; syncSrc();
+}
+$('clipClose').addEventListener('click', clipClose);
+$('clipShare').addEventListener('click', () => {
+  if (!clipFile) return;
+  if (navigator.canShare && navigator.canShare({ files:[clipFile] })){ navigator.share({ files:[clipFile] }).catch(() => {}); return; }
+  const a = document.createElement('a'); a.href = clipUrl; a.download = clipFile.name; document.body.appendChild(a); a.click(); a.remove();
+});
+let clipDown = null;
+cv.addEventListener('pointerdown', ev => {
+  if (!canClip || !ev.isPrimary || rc || clipDown) return;
+  if (!running || sheetOpen || frozen || away || src.kind === 'image' || !srcEl()) return;
+  if (!$('start').hidden || !$('ask').hidden || !$('resume').hidden || !$('locAsk').hidden) return;
+  if (typeof audioLocked === 'function' && audioLocked()) return;
+  const pid = ev.pointerId;
+  clipDown = { pid, timer:setTimeout(() => { clipDown.on = true; clipStart(pid); }, CLIP_HOLD) };
+});
+function clipUp(ev){
+  if (!clipDown || (ev && ev.pointerId !== clipDown.pid)) return;
+  const d = clipDown; clipDown = null; clearTimeout(d.timer);
+  if (d.on){ clipSupUntil = performance.now() + 600; clipEnd(false); }   // 離したときの click を、一時停止などに使わない
+}
+cv.addEventListener('pointerup', clipUp); cv.addEventListener('pointercancel', clipUp); cv.addEventListener('lostpointercapture', clipUp);
+cv.addEventListener('contextmenu', ev => ev.preventDefault());
+addEventListener('pagehide', () => { if (clipDown){ clearTimeout(clipDown.timer); clipDown = null; } clipEnd(true); });
 cv.addEventListener('click', () => {
+  if (performance.now() < clipSupUntil){ if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; } return; }
   if (performance.now() - (A.unlockedAt || -1e9) < 700){ say(tr('audioBack')); return; }   // 止められていた音を戻すためのタップは、それだけに使う
   if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; burst = 1; tap = 1; return; }
   { const v = pv(); if (v && v.paused && !pp.rev && !held()) v.play().catch(() => {}); }   // 映像が止まっていたら、このタップの中で動かし直す
@@ -1570,6 +1682,7 @@ cv.addEventListener('webglcontextrestored', () => { initGL(); });
 // バックグラウンドに回ったら、カメラと音を止める。戻ってきたら「カメラ→音」の順に確認してから再開する
 const resumeBox = $('resume');
 function goAway(){
+  if (clipDown){ clearTimeout(clipDown.timer); clipDown = null; } clipEnd(true);
   if (!running || away || hold) return;
   away = { cam:src.kind === 'camera', snd:A.playing };
   if (src.kind === 'camera'){ stopStream(); video.srcObject = null; }
