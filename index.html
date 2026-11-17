@@ -66,6 +66,9 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
   background:var(--acc,#1d2bd8); color:#fff; pointer-events:none; padding-inline:16px; text-align:center;
   -webkit-clip-path:inset(0 100% 0 0); clip-path:inset(0 100% 0 0)}
 .card.inv{background:#fff; color:var(--acc,#1d2bd8)}
+.card.tw{display:none}
+body.k-knock .card.tw{display:flex; background:var(--acc,#1d2bd8); color:#000; mix-blend-mode:plus-lighter; gap:0}
+body.k-knock .card.tw.inv{display:none}
 /* 抜き文字：黒地は乗算、白地はスクリーンで重ねると、数字の部分だけ下の映像が見える */
 body.k-knock .card{background:#000; color:#fff; mix-blend-mode:multiply; gap:0}
 body.k-knock .card.inv{background:#fff; color:#000; mix-blend-mode:screen}
@@ -753,7 +756,7 @@ const I18N = {
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
-    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipAskT:'Save the video?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', fish:'Fisheye', bit:'Black & white (2-tone)', gb:'Handheld game',
+    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'Save the video?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', fish:'Fisheye', bit:'Black & white (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
@@ -775,7 +778,7 @@ const I18N = {
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
-    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', fish:'魚眼', bit:'白黒2色', gb:'携帯ゲーム機',
+    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', fish:'魚眼', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
@@ -1501,19 +1504,26 @@ const HIDE = { l:'inset(0 100% 0 0)', r:'inset(0 0 0 100%)', t:'inset(0 0 100% 0
 let top = 0, inv = false, horiz = Math.random() < .5, hs = Math.random() < .5 ? 0 : 1, vs = Math.random() < .5 ? 0 : 1;
 // 動きは「左右」と「上下」を交互にし、同じ向きの中でも側を交互にする（上→右→下→左…のように一巡する）
 const side = () => { horiz = !horiz; if (horiz){ hs = 1 - hs; return 'lr'[hs]; } vs = 1 - vs; return 'tb'[vs]; };
+// 抜き文字の色づけ用の「ふたご」：黒地(乗算)の下に、時間帯の色を足し算で重ねる（文字の部分は黒なので映像がそのまま見える）
+cards.forEach(el => { const t = el.cloneNode(true); t.id = el.id + 'T'; t.classList.add('tw'); t.setAttribute('aria-hidden', 'true'); el.after(t); el._tw = t; });
+function twSync(el){
+  const t = el._tw; if (!t) return;
+  t.style.transition = el.style.transition; t.style.webkitClipPath = el.style.webkitClipPath; t.style.clipPath = el.style.clipPath; t.style.zIndex = el.style.zIndex;
+  t.classList.toggle('inv', el.classList.contains('inv')); const a = el.querySelector('.ctime'), b = t.querySelector('.ctime'); b.textContent = a.textContent; b.className = a.className;
+}
 function clip(el, v, anim){
   el.style.transition = anim && !reduce ? 'clip-path .42s ' + EASE + ', -webkit-clip-path .42s ' + EASE : 'none';
-  el.style.webkitClipPath = v; el.style.clipPath = v;
+  el.style.webkitClipPath = v; el.style.clipPath = v; twSync(el);
 }
 function cardIn(text){
   if (clockMode === 'cutout'){
     // 抜き文字：カードは10秒に1枚だけ。毎秒、数字だけがカチッと替わる
     text = text.replace(/ /g, '\n');
-    if (cardOn){ const tm = cards[top].querySelector('.ctime'); tm.textContent = text; if (!reduce){ tm.classList.remove('tk'); void tm.offsetWidth; tm.classList.add('tk'); } return; }
+    if (cardOn){ const tm = cards[top].querySelector('.ctime'); tm.textContent = text; if (!reduce){ tm.classList.remove('tk'); void tm.offsetWidth; tm.classList.add('tk'); } twSync(cards[top]); return; }
   }
   const prev = cards[top]; top = 1 - top; inv = !inv; const el = cards[top];
   el.querySelector('.ctime').textContent = text; el.classList.toggle('inv', inv);
-  prev.style.zIndex = 3; el.style.zIndex = 4;
+  prev.style.zIndex = 3; el.style.zIndex = 4; twSync(prev);
   clip(el, HIDE[side()], false); void el.offsetWidth; clip(el, 'inset(0 0 0 0)', true);
   cardOn = true;
 }
@@ -1574,12 +1584,12 @@ const clipQuiet = () => !!rc || clipHoldOn || !$('clipAsk').hidden;   // 録画�
 function clipHush(){ cardsOff(); zoom = 0; }
 const srcEl = () => src.kind === 'demo' ? demoVid : (src.kind === 'camera' || src.kind === 'file') ? video : null;
 function clipDraw(){
-  const v = srcEl(); if (!rc || !v || !v.videoWidth) return;
+  const v = video; if (!rc || src.kind !== 'camera' || !v.srcObject || v.readyState < 2 || !v.videoWidth) return;   // カメラの映像が来てから録る
   const c = rc;
   if (!c.w){   // 最初に映像が来た時点で、元の縦横比のまま長辺720pxまでに縮めて決める
     const k = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight));
     c.w = Math.max(2, Math.round(v.videoWidth * k / 2) * 2); c.h = Math.max(2, Math.round(v.videoHeight * k / 2) * 2);
-    c.cv.width = c.w; c.cv.height = c.h; c.begin();
+    c.cv.width = c.w; c.cv.height = c.h; clearTimeout(c.wait); c.timer = setTimeout(() => clipEnd(false), CLIP_MAX * 1000); c.begin();
   }
   c.ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (src.kind === 'camera' && src.mirror){ c.ctx.translate(c.w, 0); c.ctx.scale(-1, 1); }   // 画面で見えているのと同じ向き
@@ -1603,12 +1613,13 @@ function clipStart(pid){
   };
   clipHush(); $('rec').hidden = false; $('recBar').hidden = false;
   c.tick = setInterval(() => { const s = Math.min(CLIP_MAX, (performance.now() - c.t0) / 1000); $('recT').textContent = tr('recHint') + '  0:' + String(Math.floor(s)).padStart(2, '0'); $('recFill').style.width = (s / CLIP_MAX * 100) + '%'; }, 100);
-  c.timer = setTimeout(() => clipEnd(false), CLIP_MAX * 1000);
+  c.wait = setTimeout(() => { clipEnd(true); say(tr('clipFail')); }, 8000);   // カメラの映像が来なければあきらめる
+  if (src.kind !== 'camera'){ if (frozen) setFrozen(false); startCamera(); }   // ビデオや写真を流していたら、やめてカメラに切り替えてから録る
   try{ cv.setPointerCapture(pid); }catch(e){}
 }
 function clipEnd(discard){
   const c = rc; if (!c) return; rc = null;
-  clearTimeout(c.timer); clearInterval(c.tick); $('rec').hidden = true; $('recBar').hidden = true; $('recFill').style.width = '0';
+  clearTimeout(c.timer); clearTimeout(c.wait); clearInterval(c.tick); $('rec').hidden = true; $('recBar').hidden = true; $('recFill').style.width = '0';
   lastSec = -1;   // 止めていたパネルとビートパンチを、次の1秒から戻す
   c.discard = discard || (performance.now() - c.t0) / 1000 < CLIP_MIN;
   c.short = !discard && c.discard;
@@ -1631,7 +1642,7 @@ function clipDispose(){
   if (clipUrl) URL.revokeObjectURL(clipUrl); clipUrl = null; clipFile = null; $('clipAsk').hidden = true;
 }
 function clipClose(){
-  const p = clipPrev; clipPrev = null; clipDispose();
+  const p = clipPrev; clipPrev = null; clipDispose(); say(tr('clipOff'));
   if (p && p.kind === 'camera'){ startCamera(); return; }
   if (p && p.kind === 'file' && p.url){ video.src = p.url; video._noRev = false; video._rs = 0; pp.rev = false; video.play().catch(() => {}); src = { kind:'file' }; syncSrc(); return; }
   stopStream(); video.pause(); video.srcObject = null; pp.rev = false; src = { kind:'demo' }; syncSrc();
@@ -1641,7 +1652,7 @@ cv.addEventListener('pointerdown', ev => {
   if (!canClip || !ev.isPrimary || rc || clipDown) return;
   const playing = src.kind === 'file' && src.clip;
   if (!running || sheetOpen || away || !$('clipAsk').hidden) return;
-  if (playing ? !clipFile : (frozen || src.kind === 'image' || !srcEl())) return;
+  if (playing ? !clipFile : false) return;
   if (!$('start').hidden || !$('ask').hidden || !$('resume').hidden || !$('locAsk').hidden) return;
   if (typeof audioLocked === 'function' && audioLocked()) return;
   const pid = ev.pointerId;
@@ -1665,10 +1676,11 @@ $('clipSave').addEventListener('click', () => {
 cv.addEventListener('click', () => {
   if (performance.now() < clipSupUntil){ if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; } return; }
   if (performance.now() - (A.unlockedAt || -1e9) < 700){ say(tr('audioBack')); return; }   // 止められていた音を戻すためのタップは、それだけに使う
-  if (src.kind === 'file' && src.clip){ if (!cardOn && performance.now() - punchAt > 400 && !clipQuiet()) clipClose(); return; }   // クリップ再生中：パネルやビートパンチの最中でなければ、ワンタップで元の映像へ
-  if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; burst = 1; tap = 1; return; }
+  const inClip = src.kind === 'file' && src.clip;
+  if (inClip && !cardOn && performance.now() - punchAt > 400 && !clipQuiet()){ tapTimer = null; clipClose(); return; }   // パネルやビートパンチの最中でなければ、シングルタップで解除
+  if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; if (inClip) clipClose(); return; }   // ダブルタップは、いつでも解除
   { const v = pv(); if (v && v.paused && !pp.rev && !held()) v.play().catch(() => {}); }   // 映像が止まっていたら、このタップの中で動かし直す
-  tapTimer = setTimeout(() => { tapTimer = null; }, 270);   // 一時停止は廃止。2回続けたときだけグリッチ
+  tapTimer = setTimeout(() => { tapTimer = null; }, 270);
 });
 cv.addEventListener('webglcontextlost', ev => { ev.preventDefault(); gl = null; });
 cv.addEventListener('webglcontextrestored', () => { initGL(); });
