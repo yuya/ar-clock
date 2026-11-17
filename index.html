@@ -245,6 +245,8 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
         <button type="button" id="look-pop" data-v="pop" data-i18n="pop"></button>
         <button type="button" id="look-mini" data-v="mini" data-i18n="mini"></button>
         <button type="button" id="look-fish" data-v="fish" data-i18n="fish"></button>
+        <button type="button" id="look-bit" data-v="bit" data-i18n="bit"></button>
+        <button type="button" id="look-gb" data-v="gb" data-i18n="gb"></button>
       </div>
       <div class="opt" id="optLine"><div class="opt-in">
         <label class="lab" for="lineW" data-i18n="lineW"></label>
@@ -728,7 +730,7 @@ const I18N = {
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
-    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', fish:'Fisheye',
+    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', fish:'Fisheye', bit:'Black & white (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
@@ -750,7 +752,7 @@ const I18N = {
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
-    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', fish:'魚眼',
+    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', fish:'魚眼', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
@@ -918,7 +920,7 @@ let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environme
 // 見た目は3つの組み合わせ：ベース（カラー/モノクロ）× フィルタ × グリッチ。以前の単一フィルタ設定は読み替える
 const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:['mono', 'none', '1'], mono:['mono', 'none', '0'], pop:['color', 'pop', '0'], film:['color', 'film', '0'], none:['color', 'none', '0'] }[store.get('fx', '')] || ['color', 'none', '1'];   // 初めての人は、フィルタなしのカラーから
 let base = store.get('base', OLD[0]) === 'color' ? 'color' : 'mono', look = store.get('look', OLD[1]), glitchOn = store.get('glitch', OLD[2]) === '1';
-if (!['none', 'film', 'vivid', 'manga', 'pop', 'mini', 'fish'].includes(look)) look = 'none';
+if (!['none', 'film', 'vivid', 'manga', 'pop', 'mini', 'fish', 'bit', 'gb'].includes(look)) look = 'none';
 
 // サンプル映像：同じ場所に置いた動画（sample.mp4）。ページを開いた瞬間から読み込みと再生を始める
 const demoVid = $('demoVid'); demoVid._noRev = true;
@@ -1389,7 +1391,12 @@ void main(){
     vec2 bp=floor(px/2.); float bx=mod(bp.x,4.), by=mod(bp.y,4.);
     float bi=mod(bx*5.+by*3.+mod(floor(bx/2.)+floor(by/2.),2.)*8.,16.);   // 並びが崩れない 4×4 の閾値表
     float thr=(bi+.5)/16.;
-    col=L(col)>thr*.86+.07?u_paper:u_ink;
+    if(u_bit<1.5) col=L(col)>thr*.86+.07?u_paper:u_ink;
+    else{
+      // 携帯ゲーム機：4階調の緑
+      float v=clamp(L(col)+(thr-.5)*.3,0.,.999); float k=floor(v*4.);
+      col=k<1.?vec3(.059,.220,.059):k<2.?vec3(.188,.384,.188):k<3.?vec3(.545,.675,.059):vec3(.608,.737,.059);
+    }
   }
   gl_FragColor=vec4(col,1.);
 }`;
@@ -1476,8 +1483,8 @@ function render(now){
   gl.uniform1f(u.u_mono, mono ? 1 : 0); gl.uniform1f(u.u_look, LOOK_ID[look] || 0); gl.uniform1f(u.u_glitch, glitch ? 1 : 0);
   gl.uniform1f(u.u_burst, glitchOn ? Math.min(1.2, burst) : tap);
   gl.uniform1f(u.u_lines, lines);
-  gl.uniform1f(u.u_gamma, mono && monoTone <= .03 ? 1.15 : Math.pow(2, (monoTone - .5) * 2.6)); gl.uniform1f(u.u_gamt, glitchAmt); gl.uniform1f(u.u_vig, running && vigOn ? .25 + .75 * vigAmt : 0); gl.uniform1f(u.u_zoom, zoom); gl.uniform1f(u.u_bit, mono && monoTone <= .03 ? 1 : 0); gl.uniform1f(u.u_old, running && oldOn && !reduce ? .15 + .85 * oldAmt : 0);
-  gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'vivid' ? .012 : look === 'mini' ? 0 : look === 'none' || look === 'fish' ? (mono ? .04 : 0) : look === 'manga' && !mono ? .02 : .03);
+  gl.uniform1f(u.u_gamma, look === 'bit' || look === 'gb' ? 1.1 : Math.pow(2, (monoTone - .5) * 2.6)); gl.uniform1f(u.u_gamt, glitchAmt); gl.uniform1f(u.u_vig, running && vigOn ? .25 + .75 * vigAmt : 0); gl.uniform1f(u.u_zoom, zoom); gl.uniform1f(u.u_bit, look === 'bit' ? 1 : look === 'gb' ? 2 : 0); gl.uniform1f(u.u_old, running && oldOn && !reduce ? .15 + .85 * oldAmt : 0);
+  gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'vivid' ? .012 : look === 'mini' || look === 'bit' || look === 'gb' ? 0 : look === 'none' || look === 'fish' ? (mono ? .04 : 0) : look === 'manga' && !mono ? .02 : .03);
   gl.uniform3f(u.u_paper, .965, .957, .933); gl.uniform3f(u.u_ink, .063, .063, .071);
   gl.uniform3fv(u.u_p0, P[0]); gl.uniform3fv(u.u_p1, P[1]); gl.uniform3fv(u.u_p2, P[2]); gl.uniform3fv(u.u_p3, P[3]);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
