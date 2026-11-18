@@ -119,6 +119,17 @@ body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
 .sheet-body{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:18px;
   padding:16px max(16px,var(--sr)) calc(max(16px,var(--sb)) + 28px) max(16px,var(--sl))}
 .grp{display:flex; flex-direction:column; gap:8px; min-width:0}
+.sheet-body > .grp:not(.tabon){display:none}
+.tabs{flex:0 0 auto; display:flex; gap:6px; overflow-x:auto; padding:8px max(16px,var(--sr)) 8px max(16px,var(--sl)); border-bottom:1px solid var(--glass-line); scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.sheet .tabs button{flex:0 0 auto; min-height:44px; padding:6px 14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:13px; font-weight:800; white-space:nowrap}
+.tabs small{font-size:10px; font-weight:600; opacity:.7; max-width:9em; overflow:hidden; text-overflow:ellipsis}
+.tabs small:empty{display:none}
+.sheet .tabs button[aria-selected="true"]{background:rgba(255,255,255,.9); color:#111}
+.seg.thumbs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.sheet .seg.thumbs button{position:relative; aspect-ratio:4/5; min-height:0; padding:0 4px 8px; display:flex; align-items:flex-end; justify-content:center; text-align:center; background-color:rgba(255,255,255,.14); background-size:cover; background-position:center; color:#fff; font-size:12px; font-weight:800; line-height:1.2; text-shadow:0 1px 3px rgba(0,0,0,.8); overflow:hidden; box-shadow:inset 0 -46px 30px -24px rgba(0,0,0,.7)}
+.sheet .seg.thumbs button[hidden]{display:none}
+.sheet .seg.thumbs button[aria-pressed="true"]{background-color:rgba(255,255,255,.14); color:#fff; outline:3px solid #fff; outline-offset:-3px}
 /* シートは半透明。下の映像が見えるので、文字と操作部だけ紙色の地を敷く */
 .grp h3, .note, .lab{align-self:flex-start; background:var(--paper); padding:2px 6px}
 .grp h3{margin:0; font-family:var(--font-d); font-weight:600; font-size:11px; letter-spacing:.14em}
@@ -237,6 +248,14 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 <div class="shade" id="shade"></div>
 <section class="sheet" id="sheet" data-i18n-label="settings">
   <div class="sheet-head"><h2 data-i18n="settings"></h2><button type="button" id="close" data-i18n="close"></button></div>
+  <div class="tabs" id="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="src"><span data-i18n="tabSrc"></span></button>
+    <button type="button" role="tab" data-tab="base"><span data-i18n="tabBase"></span><small id="tsBase"></small></button>
+    <button type="button" role="tab" data-tab="look"><span data-i18n="tabLook"></span><small id="tsLook"></small></button>
+    <button type="button" role="tab" data-tab="fx"><span data-i18n="tabFx"></span><small id="tsFx"></small></button>
+    <button type="button" role="tab" data-tab="view"><span data-i18n="tabView"></span></button>
+    <button type="button" role="tab" data-tab="sound"><span data-i18n="tabSound"></span></button>
+  </div>
   <div class="sheet-body">
     <div class="grp">
       <h3 data-i18n="gSound"></h3>
@@ -247,7 +266,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
     </div>
     <div class="grp">
       <h3 data-i18n="gBase"></h3>
-      <div class="seg two" id="segBase">
+      <div class="seg two thumbs" id="segBase">
         <button type="button" id="base-color" data-v="color" data-i18n="color"></button>
         <button type="button" id="base-mono" data-v="mono" data-i18n="mono"></button>
         <button type="button" id="base-bit" data-v="bit" data-i18n="bit"></button>
@@ -265,7 +284,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
     </div>
     <div class="grp">
       <h3 data-i18n="gLook"></h3>
-      <div class="seg" id="segLook">
+      <div class="seg thumbs" id="segLook">
         <button type="button" id="look-none" data-v="none" data-i18n="none"></button>
         <button type="button" id="look-film" data-v="film" data-i18n="film"></button>
         <button type="button" id="look-vivid" data-v="vivid" data-i18n="vivid"></button>
@@ -761,7 +780,7 @@ const I18N = {
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
-    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'Save the video?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'Black & white (2-tone)', gb:'Handheld game',
+    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'Save the video?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
@@ -783,7 +802,7 @@ const I18N = {
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
-    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
+    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'エフェクト', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
@@ -841,6 +860,7 @@ function wake(){
 function openSheet(o){
   sheetOpen = o; sheet.classList.toggle('open', o); shade.classList.toggle('open', o);
   elMenu.setAttribute('aria-expanded', o ? 'true' : 'false'); wake();
+  if (o && typeof onSheetOpen === 'function') onSheetOpen();
 }
 // 設定ボタンはつかんで動かせる。離すと、いちばん近い画面の角に吸い付く
 let corner = store.get('menuPos', 'tr'); if (!['tl', 'tr', 'bl', 'br'].includes(corner)) corner = 'tr';
@@ -1218,7 +1238,7 @@ function syncSrc(){
   $('fxOld').setAttribute('aria-pressed', oldOn ? 'true' : 'false'); $('fxOld').textContent = tr('old');
   // 調整スライダーは、効く項目を選んでいるときだけ開く
   const opt = (id, on) => $(id).classList.toggle('on', !!on);
-  nativeNotify();
+  nativeNotify(); updTabs();
   $('fxPix').setAttribute('aria-pressed', pixOn ? 'true' : 'false'); $('fxPix').textContent = tr('pix');
   opt('optMono', base === 'mono'); opt('optBit', base === 'bit' || base === 'gb'); opt('optLine', look === 'manga' || look === 'pop'); opt('optGlitch', glitchOn); opt('optVig', vigOn); opt('optOld', oldOn); opt('optPunch', punchOn);
   $('fxPunch').setAttribute('aria-pressed', punchOn ? 'true' : 'false'); $('fxPunch').textContent = tr('punch');
@@ -1523,7 +1543,7 @@ function upload(t){
 const lookSel = () => look, baseSel = () => base;
 function render(now){
   // 最初の選択画面の間は、サンプル映像をフィルタなしのカラーでそのまま見せる
-  const look = running ? lookSel() : 'none', base = running ? baseSel() : 'color';
+  const look = thumbT && thumbBase ? 'none' : thumbT && thumbLook ? thumbLook : running ? lookSel() : 'none', base = thumbT && thumbBase ? thumbBase : running ? baseSel() : 'color';
   layout();
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); upload(now);
   const mirror = src.kind === 'camera' && src.mirror ? 1 : 0, asp = cv.width / cv.height;
@@ -1546,6 +1566,7 @@ function render(now){
   gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'vivid' ? .012 : look === 'mini' || base === 'bit' || base === 'gb' ? 0 : look === 'none' || look === 'fish' ? (mono ? .04 : 0) : ['thermal', 'crt', 'edge', 'lidar'].includes(look) ? 0 : look === 'manga' && !mono ? .02 : .03);
   gl.uniform3f(u.u_paper, .965, .957, .933); gl.uniform3f(u.u_ink, .063, .063, .071);
   gl.uniform3fv(u.u_p0, P[0]); gl.uniform3fv(u.u_p1, P[1]); gl.uniform3fv(u.u_p2, P[2]); gl.uniform3fv(u.u_p3, P[3]);
+  if (thumbT){ gl.uniform1f(u.u_glitch, 0); gl.uniform1f(u.u_burst, 0); gl.uniform1f(u.u_vig, 0); gl.uniform1f(u.u_old, 0); gl.uniform1f(u.u_zoom, 0); }   // サムネイルには、エフェクトをかけない
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
@@ -1625,6 +1646,7 @@ function frame(ms){
   if (!gl) return;
   render(now);
   if (rc) clipDraw();
+  if (thumbQ.length && sheetOpen) thumbStep(now);
 }
 
 // ── 長押しクリップ：画面を長押ししている間（最大10秒）、フィルタをかける前の映像だけを録る。離すと再生・共有できる
@@ -1864,6 +1886,43 @@ function autoResume(){
   if (a.snd && !a.cam){ setTimeout(fin, 350); return; }
   if (a.cam){ restarting = true; startCamera().then(() => { restarting = false; fin(); }); } else fin();
 }
+// ── 設定：タブと、ベース／フィルタのサムネイル
+// サムネイルは通信なし。設定を開いたとき（とタブを替えたとき）、いま映っている1コマに、各ベース・フィルタを1つずつ端末のGPUでかけて作る（1フレームに1枚）
+const TAB_OF = { gSrc:'src', gBase:'base', gLook:'look', gFx:'fx', gMode:'view', gView:'view', gLang:'view', gSound:'sound', gStyle:'sound', gMood:'sound', gVol:'sound' };
+let tab = store.get('tab', 'look'); if (!['src', 'base', 'look', 'fx', 'view', 'sound'].includes(tab)) tab = 'look';
+document.querySelectorAll('.sheet-body > .grp').forEach(g => { const h = g.querySelector('h3 [data-i18n], h3[data-i18n]'); g.dataset.tab = (h && TAB_OF[h.dataset.i18n]) || 'view'; });
+let thumbT = false, thumbBase = null, thumbLook = null, thumbQ = [];
+const thumbCv = document.createElement('canvas'); thumbCv.width = 160; thumbCv.height = 200; const thumbCtx = thumbCv.getContext('2d');
+function queueThumbs(){
+  thumbQ = [];
+  if (!sheetOpen || !running || !gl) return;
+  const sel = tab === 'base' ? '#segBase button' : tab === 'look' ? '#segLook button' : null; if (!sel) return;
+  document.querySelectorAll(sel).forEach(b => { if (!b.hidden) thumbQ.push(b); });
+}
+function thumbStep(now){
+  const b = thumbQ.shift(); if (!b) return;
+  const isBase = !!b.closest('#segBase'); thumbT = true; thumbBase = isBase ? b.dataset.v : null; thumbLook = isBase ? null : b.dataset.v;
+  try{
+    render(now);
+    const sw = cv.width, sh = cv.height, ch = Math.min(sh, sw * 1.25), cw = ch / 1.25;
+    thumbCtx.drawImage(cv, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, 160, 200);
+    b.style.backgroundImage = 'url(' + thumbCv.toDataURL('image/jpeg', .72) + ')';
+  }catch(e){}
+  thumbT = false; thumbBase = thumbLook = null; render(now);   // すぐ本来の映像に描き直す（画面には出ない）
+}
+function showTab(t){
+  tab = t; store.set('tab', t);
+  document.querySelectorAll('.sheet-body > .grp').forEach(g => g.classList.toggle('tabon', g.dataset.tab === t));
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t ? 'true' : 'false'));
+  document.querySelector('.sheet-body').scrollTop = 0; queueThumbs();
+}
+function onSheetOpen(){ queueThumbs(); }
+function updTabs(){
+  $('tsBase').textContent = tr(base); $('tsLook').textContent = tr(look);
+  $('tsFx').textContent = [glitchOn ? tr('glitch') : '', vigOn ? tr('vig') : '', oldOn ? tr('old') : '', punchOn ? tr('punch') : ''].filter(Boolean).join('・');
+}
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+showTab(tab);
 syncUI(); syncSrc(); wake(); tickClock();
 demoPlay();
 // カメラは、許可済みでも開いた瞬間には起動しない（最初の画面で選んでから）
