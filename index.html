@@ -120,14 +120,18 @@ body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
   padding:16px max(16px,var(--sr)) calc(max(16px,var(--sb)) + 28px) max(16px,var(--sl))}
 .grp{display:flex; flex-direction:column; gap:8px; min-width:0}
 .sheet-body > .grp:not(.tabon){display:none}
-.tabs{flex:0 0 auto; display:flex; gap:6px; overflow-x:auto; padding:8px max(16px,var(--sr)) 8px max(16px,var(--sl)); border-bottom:1px solid var(--glass-line); scrollbar-width:none}
+.sheet-body{touch-action:pan-y; overscroll-behavior:contain}
+.sheet-body > *{flex-shrink:0}
+/* タブは「バー」：薄い帯の中に並べ、選んでいるものだけ白い丸薬になる。項目（角丸の四角）とは形で区別する */
+.tabs{flex:0 0 auto; display:flex; gap:2px; overflow-x:auto; -webkit-overflow-scrolling:touch; touch-action:pan-x; overscroll-behavior:contain; scrollbar-width:none;
+  margin:10px max(16px,var(--sr)) 4px max(16px,var(--sl)); padding:4px; border-radius:999px; background:rgba(255,255,255,.14)}
 .tabs::-webkit-scrollbar{display:none}
-.sheet .tabs button{flex:0 0 auto; min-height:44px; padding:6px 14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:13px; font-weight:800; white-space:nowrap}
-.tabs small{font-size:10px; font-weight:600; opacity:.7; max-width:9em; overflow:hidden; text-overflow:ellipsis}
+.sheet .tabs button{flex:0 0 auto; min-height:44px; padding:6px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; font-size:13px; font-weight:800; white-space:nowrap; border:0; border-radius:999px; background:transparent; color:rgba(255,255,255,.78)}
+.tabs small{font-size:10px; font-weight:600; opacity:.75; max-width:8em; overflow:hidden; text-overflow:ellipsis}
 .tabs small:empty{display:none}
-.sheet .tabs button[aria-selected="true"]{background:rgba(255,255,255,.9); color:#111}
+.sheet .tabs button[aria-selected="true"]{background:#fff; color:#111; box-shadow:0 1px 6px rgba(0,0,0,.25)}
 .seg.thumbs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
-.sheet .seg.thumbs button{position:relative; aspect-ratio:4/5; min-height:0; padding:0 4px 8px; display:flex; align-items:flex-end; justify-content:center; text-align:center; background-color:rgba(255,255,255,.14); background-size:cover; background-position:center; color:#fff; font-size:12px; font-weight:800; line-height:1.2; text-shadow:0 1px 3px rgba(0,0,0,.8); overflow:hidden; box-shadow:inset 0 -46px 30px -24px rgba(0,0,0,.7)}
+.sheet .seg.thumbs button{position:relative; aspect-ratio:4/3; min-height:0; padding:0 4px 6px; display:flex; align-items:flex-end; justify-content:center; text-align:center; background-color:rgba(255,255,255,.14); background-size:cover; background-position:center; color:#fff; font-size:11px; font-weight:800; line-height:1.15; text-shadow:0 1px 3px rgba(0,0,0,.8); overflow:hidden; border-radius:12px; box-shadow:inset 0 -34px 24px -18px rgba(0,0,0,.7)}
 .sheet .seg.thumbs button[hidden]{display:none}
 .sheet .seg.thumbs button[aria-pressed="true"]{background-color:rgba(255,255,255,.14); color:#fff; outline:3px solid #fff; outline-offset:-3px}
 /* シートは半透明。下の映像が見えるので、文字と操作部だけ紙色の地を敷く */
@@ -1864,6 +1868,7 @@ if (window.__arNativeApp) document.addEventListener('click', ev => {
 const IOS_WEB = !window.__arNativeApp && (/iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
 function hapticCover(){
   document.querySelectorAll('button').forEach(b => {
+    if (b.closest('.tabs, .thumbs')) return;   // タブとサムネの一覧は、指でスクロールするので、触覚用の部品を重ねない（重ねるとスクロールが始まらない）
     if (b.querySelector(':scope > .hx')) return;
     const i = document.createElement('input');
     i.className = 'hx'; i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1; i.setAttribute('aria-hidden', 'true');
@@ -1892,7 +1897,7 @@ const TAB_OF = { gSrc:'src', gBase:'base', gLook:'look', gFx:'fx', gMode:'view',
 let tab = store.get('tab', 'look'); if (!['src', 'base', 'look', 'fx', 'view', 'sound'].includes(tab)) tab = 'look';
 document.querySelectorAll('.sheet-body > .grp').forEach(g => { const h = g.querySelector('h3 [data-i18n], h3[data-i18n]'); g.dataset.tab = (h && TAB_OF[h.dataset.i18n]) || 'view'; });
 let thumbT = false, thumbBase = null, thumbLook = null, thumbQ = [];
-const thumbCv = document.createElement('canvas'); thumbCv.width = 160; thumbCv.height = 200; const thumbCtx = thumbCv.getContext('2d');
+const thumbCv = document.createElement('canvas'); thumbCv.width = 200; thumbCv.height = 150; const thumbCtx = thumbCv.getContext('2d');
 function queueThumbs(){
   thumbQ = [];
   if (!sheetOpen || !running || !gl) return;
@@ -1904,8 +1909,8 @@ function thumbStep(now){
   const isBase = !!b.closest('#segBase'); thumbT = true; thumbBase = isBase ? b.dataset.v : null; thumbLook = isBase ? null : b.dataset.v;
   try{
     render(now);
-    const sw = cv.width, sh = cv.height, ch = Math.min(sh, sw * 1.25), cw = ch / 1.25;
-    thumbCtx.drawImage(cv, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, 160, 200);
+    const sw = cv.width, sh = cv.height, cw = sw, ch = Math.min(sh, sw * .75);
+    thumbCtx.drawImage(cv, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, 200, 150);   // 上下を切って、横長に
     b.style.backgroundImage = 'url(' + thumbCv.toDataURL('image/jpeg', .72) + ')';
   }catch(e){}
   thumbT = false; thumbBase = thumbLook = null; render(now);   // すぐ本来の映像に描き直す（画面には出ない）
