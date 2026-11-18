@@ -11,13 +11,14 @@
 <meta property="og:title" content="AR CLOCK">
 <meta property="og:description" content="A clock, laid over the view through your camera.">
 <meta name="apple-mobile-web-app-title" content="AR CLOCK">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Urbanist:wght@600;800;900&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=Archivo:wght@600;800;900&display=swap">
 <style>
 /* Layout: one manga panel filling the phone screen, showing the camera through a filter; every 10 seconds a flat time card wipes across. All controls live in a sheet that slides up from the bottom. Single black-and-white look by design. */
 :root{
   --paper:#f6f4ee; --ink:#101012; --mute:#66666c;
-  --font-d:'Archivo','Helvetica Neue',Arial,sans-serif;
-  --font-u:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --font-d:'Urbanist','IBM Plex Sans JP','Helvetica Neue',Arial,sans-serif;
+  --font-t:'Archivo','IBM Plex Sans JP',sans-serif;
+  --font-u:'Inter','IBM Plex Sans JP','Hiragino Sans','Yu Gothic',system-ui,sans-serif;
   --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px); --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px);
   color-scheme:light;
 }
@@ -66,9 +67,9 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
   background:var(--acc,#1d2bd8); color:#fff; pointer-events:none; padding-inline:16px; text-align:center;
   -webkit-clip-path:inset(0 100% 0 0); clip-path:inset(0 100% 0 0)}
 .card.inv{background:#fff; color:var(--acc,#1d2bd8)}
-.card.tw{display:none}
-body.k-knock .card.tw{display:flex; background:var(--acc,#1d2bd8); color:#000; mix-blend-mode:plus-lighter; gap:0}
-body.k-knock .card.tw.inv{display:none}
+.fsel{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.fsel label{font-size:13px}
+.fsel select{flex:0 0 auto; min-height:44px; padding:6px 36px 6px 14px; font:inherit; font-weight:700; color:var(--on); background:var(--glass-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center; border:1px solid var(--glass-line); border-radius:16px; -webkit-appearance:none; appearance:none}
 /* 抜き文字：黒地は乗算、白地はスクリーンで重ねると、数字の部分だけ下の映像が見える */
 body.k-knock .card{background:#000; color:#fff; mix-blend-mode:multiply; gap:0}
 body.k-knock .card.inv{background:#fff; color:#000; mix-blend-mode:screen}
@@ -89,7 +90,7 @@ body.native .tag.br{bottom:calc(var(--sb) * .3 + 8px)}
 body.native .hint{left:max(12px,var(--sl)); bottom:calc(var(--sb) + 70px)}
 .card.in{-webkit-clip-path:inset(0 0 0 0); clip-path:inset(0 0 0 0); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
 .card.out{-webkit-clip-path:inset(0 0 0 100%); clip-path:inset(0 0 0 100%); transition:clip-path .55s cubic-bezier(.7,0,.2,1), -webkit-clip-path .55s cubic-bezier(.7,0,.2,1)}
-.time{font-family:var(--font-d); font-weight:800; font-size:clamp(44px,15vw,84px); letter-spacing:.05em; line-height:1; font-variant-numeric:tabular-nums}
+.time{font-family:var(--font-t); font-weight:800; font-size:clamp(44px,15vw,84px); letter-spacing:.05em; line-height:1; font-variant-numeric:tabular-nums}
 .sub{font-family:var(--font-d); font-weight:600; font-size:12px; letter-spacing:.26em; text-indent:.26em}
 .sub.dimmed{opacity:.55; letter-spacing:.2em}
 
@@ -346,6 +347,8 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
         <button type="button" id="locRevoke" data-i18n="locRevoke" hidden></button>
       </div>
       <p class="note" id="locStatus"></p>
+      <div class="fsel"><label for="clockFont" data-i18n="clockFont"></label>
+        <select id="clockFont"><option value="archivo">Archivo</option><option value="urbanist">Urbanist</option></select></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gSrc"></h3>
@@ -786,7 +789,7 @@ const I18N = {
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
     gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'Save the video?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
-    gView:'Display', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
+    gView:'Display', clockFont:'Clock font', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
     locGetting:'Getting your location…', locOk:'Showing ', locErrPerm:'The browser blocked location for this page. Allow it in the browser or OS settings.', locErrPos:'Couldn’t get your position.', locErrLookup:'Got your position, but couldn’t look up the place name.', oldAmt:'Dust and scratches', weak:'Weak', strong:'Strong', fxNote:'Double-tap the picture to glitch it. A single tap freezes it.',
     gSrc:'Picture', camBack:'Rear camera', camFront:'Front camera',
@@ -808,7 +811,7 @@ const I18N = {
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
     gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'エフェクト', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
-    gView:'表示', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
+    gView:'表示', clockFont:'時計のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
     locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', strong:'強', fxNote:'映像を2回タップすると、その場でグリッチが走ります。1回タップは一時停止です。',
     gSrc:'映像', camBack:'外側カメラ', camFront:'内側カメラ',
@@ -1197,6 +1200,11 @@ $('punchAmt').value = punchAmt;
 $('punchAmt').addEventListener('input', () => { punchAmt = parseFloat($('punchAmt').value); store.set('punchAmt', String(punchAmt)); });
 $('fxPunch').addEventListener('click', () => { punchOn = !punchOn; store.set('punch', punchOn ? '1' : '0'); changed(false); });
 // 時計の見せ方：パネル（色の面に時刻）／抜き文字（大きな数字が窓になり、その中だけ映像が動く）
+const CFONT = { archivo:"'Archivo','IBM Plex Sans JP',sans-serif", urbanist:"'Urbanist','IBM Plex Sans JP',sans-serif" };
+let clockFont = CFONT[store.get('cfont', 'archivo')] ? store.get('cfont', 'archivo') : 'archivo';
+const applyFont = () => { document.body.style.setProperty('--font-t', CFONT[clockFont]); const s = $('clockFont'); if (s) s.value = clockFont; };
+$('clockFont').addEventListener('change', e => { clockFont = CFONT[e.target.value] ? e.target.value : 'archivo'; store.set('cfont', clockFont); applyFont(); });
+applyFont();
 let clockMode = store.get('mode', 'panel') === 'cutout' ? 'cutout' : 'panel';
 $('segMode').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
@@ -1582,26 +1590,19 @@ const HIDE = { l:'inset(0 100% 0 0)', r:'inset(0 0 0 100%)', t:'inset(0 0 100% 0
 let top = 0, inv = false, horiz = Math.random() < .5, hs = Math.random() < .5 ? 0 : 1, vs = Math.random() < .5 ? 0 : 1;
 // 動きは「左右」と「上下」を交互にし、同じ向きの中でも側を交互にする（上→右→下→左…のように一巡する）
 const side = () => { horiz = !horiz; if (horiz){ hs = 1 - hs; return 'lr'[hs]; } vs = 1 - vs; return 'tb'[vs]; };
-// 抜き文字の色づけ用の「ふたご」：黒地(乗算)の下に、時間帯の色を足し算で重ねる（文字の部分は黒なので映像がそのまま見える）
-cards.forEach(el => { const t = el.cloneNode(true); t.id = el.id + 'T'; t.classList.add('tw'); t.setAttribute('aria-hidden', 'true'); el.after(t); el._tw = t; });
-function twSync(el){
-  const t = el._tw; if (!t) return;
-  t.style.transition = el.style.transition; t.style.webkitClipPath = el.style.webkitClipPath; t.style.clipPath = el.style.clipPath; t.style.zIndex = el.style.zIndex;
-  t.classList.toggle('inv', el.classList.contains('inv')); const a = el.querySelector('.ctime'), b = t.querySelector('.ctime'); b.textContent = a.textContent; b.className = a.className;
-}
 function clip(el, v, anim){
   el.style.transition = anim && !reduce ? 'clip-path .42s ' + EASE + ', -webkit-clip-path .42s ' + EASE : 'none';
-  el.style.webkitClipPath = v; el.style.clipPath = v; twSync(el);
+  el.style.webkitClipPath = v; el.style.clipPath = v;
 }
 function cardIn(text){
   if (clockMode === 'cutout'){
     // 抜き文字：カードは10秒に1枚だけ。毎秒、数字だけがカチッと替わる
     text = text.replace(/ /g, '\n');
-    if (cardOn){ const tm = cards[top].querySelector('.ctime'); tm.textContent = text; if (!reduce){ tm.classList.remove('tk'); void tm.offsetWidth; tm.classList.add('tk'); } twSync(cards[top]); return; }
+    if (cardOn){ const tm = cards[top].querySelector('.ctime'); tm.textContent = text; if (!reduce){ tm.classList.remove('tk'); void tm.offsetWidth; tm.classList.add('tk'); } return; }
   }
   const prev = cards[top]; top = 1 - top; inv = !inv; const el = cards[top];
   el.querySelector('.ctime').textContent = text; el.classList.toggle('inv', inv);
-  prev.style.zIndex = 3; el.style.zIndex = 4; twSync(prev);
+  prev.style.zIndex = 3; el.style.zIndex = 4; 
   clip(el, HIDE[side()], false); void el.offsetWidth; clip(el, 'inset(0 0 0 0)', true);
   cardOn = true;
 }
