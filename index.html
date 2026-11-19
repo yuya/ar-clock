@@ -11,14 +11,15 @@
 <meta property="og:title" content="AR CLOCK">
 <meta property="og:description" content="A clock, laid over the view through your camera.">
 <meta name="apple-mobile-web-app-title" content="AR CLOCK">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Urbanist:wght@600;800;900&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=Archivo:wght@600;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Urbanist:wght@600;800;900&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=LINE+Seed+JP:wght@400;700;800&family=Archivo:wght@600;800;900&display=swap">
 <style>
 /* Layout: one manga panel filling the phone screen, showing the camera through a filter; every 10 seconds a flat time card wipes across. All controls live in a sheet that slides up from the bottom. Single black-and-white look by design. */
 :root{
   --paper:#f6f4ee; --ink:#101012; --mute:#66666c;
-  --font-d:'Urbanist','IBM Plex Sans JP','Helvetica Neue',Arial,sans-serif;
-  --font-t:'Archivo','IBM Plex Sans JP',sans-serif;
-  --font-u:'Inter','IBM Plex Sans JP','Hiragino Sans','Yu Gothic',system-ui,sans-serif;
+  --font-j:'LINE Seed JP';
+  --font-d:'Urbanist',var(--font-j),'Helvetica Neue',Arial,sans-serif;
+  --font-t:'Archivo',var(--font-j),sans-serif;
+  --font-u:'Inter',var(--font-j),'Hiragino Sans','Yu Gothic',system-ui,sans-serif;
   --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px); --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px);
   color-scheme:light;
 }
@@ -349,6 +350,8 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
       <p class="note" id="locStatus"></p>
       <div class="fsel"><label for="clockFont" data-i18n="clockFont"></label>
         <select id="clockFont"><option value="archivo">Archivo</option><option value="urbanist">Urbanist</option></select></div>
+      <div class="fsel"><label for="jaFont" data-i18n="jaFont"></label>
+        <select id="jaFont"><option value="line">LINE Seed JP</option><option value="plex">IBM Plex Sans JP</option></select></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gSrc"></h3>
@@ -789,7 +792,7 @@ const I18N = {
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
     gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'Save the video?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
-    gView:'Display', clockFont:'Clock font', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
+    gView:'Display', clockFont:'Clock font', jaFont:'Japanese font', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
     locGetting:'Getting your location…', locOk:'Showing ', locErrPerm:'The browser blocked location for this page. Allow it in the browser or OS settings.', locErrPos:'Couldn’t get your position.', locErrLookup:'Got your position, but couldn’t look up the place name.', oldAmt:'Dust and scratches', weak:'Weak', strong:'Strong', fxNote:'Double-tap the picture to glitch it. A single tap freezes it.',
     gSrc:'Picture', camBack:'Rear camera', camFront:'Front camera',
@@ -811,7 +814,7 @@ const I18N = {
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
     gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'エフェクト', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
-    gView:'表示', clockFont:'時計のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
+    gView:'表示', clockFont:'時計のフォント', jaFont:'日本語のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
     locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', strong:'強', fxNote:'映像を2回タップすると、その場でグリッチが走ります。1回タップは一時停止です。',
     gSrc:'映像', camBack:'外側カメラ', camFront:'内側カメラ',
@@ -1200,7 +1203,13 @@ $('punchAmt').value = punchAmt;
 $('punchAmt').addEventListener('input', () => { punchAmt = parseFloat($('punchAmt').value); store.set('punchAmt', String(punchAmt)); });
 $('fxPunch').addEventListener('click', () => { punchOn = !punchOn; store.set('punch', punchOn ? '1' : '0'); changed(false); });
 // 時計の見せ方：パネル（色の面に時刻）／抜き文字（大きな数字が窓になり、その中だけ映像が動く）
-const CFONT = { archivo:"'Archivo','IBM Plex Sans JP',sans-serif", urbanist:"'Urbanist','IBM Plex Sans JP',sans-serif" };
+const CFONT = { archivo:"'Archivo',var(--font-j),sans-serif", urbanist:"'Urbanist',var(--font-j),sans-serif" };
+// 日本語のフォント（英字は Inter / Urbanist / Archivo のまま、かな漢字だけが切り替わる）
+const JFONT = { line:"'LINE Seed JP'", plex:"'IBM Plex Sans JP'" };
+let jaFont = JFONT[store.get('jfont', 'line')] ? store.get('jfont', 'line') : 'line';
+const applyJa = () => { document.documentElement.style.setProperty('--font-j', JFONT[jaFont]); const s = $('jaFont'); if (s) s.value = jaFont; };
+$('jaFont').addEventListener('change', e => { jaFont = JFONT[e.target.value] ? e.target.value : 'line'; store.set('jfont', jaFont); applyJa(); });
+applyJa();
 let clockFont = CFONT[store.get('cfont', 'archivo')] ? store.get('cfont', 'archivo') : 'archivo';
 const applyFont = () => { document.body.style.setProperty('--font-t', CFONT[clockFont]); const s = $('clockFont'); if (s) s.value = clockFont; };
 $('clockFont').addEventListener('change', e => { clockFont = CFONT[e.target.value] ? e.target.value : 'archivo'; store.set('cfont', clockFont); applyFont(); });

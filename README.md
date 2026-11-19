@@ -39,3 +39,4 @@ python3 -m http.server 8000
 - 設定シート: タブはピル型バー（選択中は白の強い角丸）、フィルタ等のサムネは4:3の横長で上下クリップ。
 - 抜き文字は黒に戻しました（時間帯の色づけは廃止）。
 - フォント: 本文は Inter → IBM Plex Sans JP、サイト名・場所/日付は Urbanist 優先。時計のフォントは「表示」タブのプルダウンで Archivo / Urbanist を選べます（Web のみ。iOSアプリの設定画面にはまだありません）。
+- 日本語のフォントは「表示」タブのプルダウンで LINE Seed JP（標準）/ IBM Plex Sans JP を選べます。英字（Inter / Urbanist / Archivo）はそのまま。
