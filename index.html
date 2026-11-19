@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>AR CLOCK</title>
-<meta name="description" content="A clock, laid over the view through your camera.">
+<meta name="description" content="A clock that lays the time over the world through your lens.">
 <meta property="og:title" content="AR CLOCK">
-<meta property="og:description" content="A clock, laid over the view through your camera.">
+<meta property="og:description" content="A clock that lays the time over the world through your lens.">
 <meta name="apple-mobile-web-app-title" content="AR CLOCK">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Urbanist:wght@600;800;900&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=LINE+Seed+JP:wght@400;700;800&family=Archivo:wght@600;800;900&display=swap">
 <style>
@@ -60,6 +60,9 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
 .start h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:22px; letter-spacing:.08em}
 .start p{margin:0; font-size:13px; font-weight:500; line-height:1.6}
 .start .err{font-weight:700}
+.start p[data-i18n="desc"]{white-space:pre-line}
+.start .catch{font-family:var(--font-d); font-weight:800; font-size:20px; line-height:1.4; letter-spacing:.04em; margin-top:-2px}
+html:lang(ja) .start .catch{word-spacing:.45em; letter-spacing:.06em}
 .start .err:empty{display:none}
 .start button, .start label.btn{width:100%}
 .start .primary{background:var(--ink); color:var(--paper)}
@@ -185,6 +188,7 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 /* LINE Seed JP は太めなので、日本語表示のときだけウェイトを一段下げる（LINE は 400/700/800 しかないので 700→500 で Regular、800→700 で Bold になる。Urbanist は 500→600、700→800 に寄るので英字の見出しはそのまま） */
 html.jl:lang(ja) body{font-weight:500}
 html.jl:lang(ja) .start h2{font-weight:700}
+html.jl:lang(ja) .start .catch{font-weight:700}
 html.jl:lang(ja) .start .err{font-weight:500}
 html.jl:lang(ja) .fsel select{font-weight:500}
 html.jl:lang(ja) #menu{font-weight:700}
@@ -211,6 +215,7 @@ html.jl:lang(ja) .lab{font-weight:500}
     <div class="hint" id="tagSrc" hidden></div>
     <div class="start" id="start">
       <h2>AR CLOCK</h2>
+      <p class="catch" data-i18n="catch"></p>
       <p data-i18n="desc"></p>
       <button type="button" id="camStart" class="primary" data-i18n="cam"></button>
       <label class="btn" for="file" data-i18n="pick"></label>
@@ -798,7 +803,7 @@ function beatPulse(){
 /* ───────────── 言語（既定は英語。設定で日本語に切り替え） ───────────── */
 const I18N = {
   en: {
-    desc:'A clock, laid over the view through your camera.', cam:'Start camera', pick:'Choose photo or video', demo:'Watch the sample',
+    catch:'Layer time on the view.', desc:'A clock that lays the time over the world through your lens.', cam:'Start camera', pick:'Choose photo or video', demo:'Watch the sample',
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
@@ -820,7 +825,7 @@ const I18N = {
     paused:'Paused', resumed:'Resumed', audioBack:'Sound resumed', hintAudio:'Tap to resume sound', hintPaused:'Paused · tap to resume', canvas:'Camera picture with filter'
   },
   ja: {
-    desc:'カメラ越しの景色に、時計を重ねる。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
+    catch:'重ねる 時を 景色に', desc:'レンズ越しの世界に、\nいまの時刻を重ねる時計です。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
