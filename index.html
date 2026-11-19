@@ -60,9 +60,8 @@ button:focus-visible, input:focus-visible, label.btn:focus-within{outline:2px da
 .start h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:22px; letter-spacing:.08em}
 .start p{margin:0; font-size:13px; font-weight:500; line-height:1.6}
 .start .err{font-weight:700}
-.start p[data-i18n="desc"]{white-space:pre-line}
 .start .catch{font-family:var(--font-d); font-weight:800; font-size:20px; line-height:1.4; letter-spacing:.04em; margin-top:-2px}
-html:lang(ja) .start .catch{word-spacing:.45em; letter-spacing:.06em}
+html:lang(ja) .start p[data-i18n="desc"]{white-space:nowrap; font-size:min(13px,3.2vw)}
 .start .err:empty{display:none}
 .start button, .start label.btn{width:100%}
 .start .primary{background:var(--ink); color:var(--paper)}
@@ -825,7 +824,7 @@ const I18N = {
     paused:'Paused', resumed:'Resumed', audioBack:'Sound resumed', hintAudio:'Tap to resume sound', hintPaused:'Paused · tap to resume', canvas:'Camera picture with filter'
   },
   ja: {
-    catch:'重ねる 時を 景色に', desc:'レンズ越しの世界に、\nいまの時刻を重ねる時計です。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
+    catch:'重ねる 時を 景色に', desc:'レンズ越しの世界に、今を重ねる時計です。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
