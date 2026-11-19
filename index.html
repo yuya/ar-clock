@@ -182,6 +182,18 @@ input[type=range]{width:100%; height:36px; margin:0; accent-color:var(--ink)}
 .seg.three{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) }
 .seg.three button{ padding:10px 4px; font-size:13px }
 @media (prefers-reduced-motion: reduce){ .card.in,.card.out,.sheet,.sheet.open,.shade,.shade.open,.toast,.opt,.opt.on{transition:none} }
+/* LINE Seed JP は太めなので、日本語表示のときだけウェイトを一段下げる（LINE は 400/700/800 しかないので 700→500 で Regular、800→700 で Bold になる。Urbanist は 500→600、700→800 に寄るので英字の見出しはそのまま） */
+html.jl:lang(ja) body{font-weight:500}
+html.jl:lang(ja) .start h2{font-weight:700}
+html.jl:lang(ja) .start .err{font-weight:500}
+html.jl:lang(ja) .fsel select{font-weight:500}
+html.jl:lang(ja) #menu{font-weight:700}
+html.jl:lang(ja) .sheet-head h2{font-weight:700}
+html.jl:lang(ja) .sheet .tabs button{font-weight:700}
+html.jl:lang(ja) .tabs small{font-weight:500}
+html.jl:lang(ja) .sheet .seg.thumbs button{font-weight:700}
+html.jl:lang(ja) .grp h3{font-weight:500}
+html.jl:lang(ja) .lab{font-weight:500}
 </style>
 
 </head>
@@ -1207,7 +1219,7 @@ const CFONT = { archivo:"'Archivo',var(--font-j),sans-serif", urbanist:"'Urbanis
 // 日本語のフォント（英字は Inter / Urbanist / Archivo のまま、かな漢字だけが切り替わる）
 const JFONT = { line:"'LINE Seed JP'", plex:"'IBM Plex Sans JP'" };
 let jaFont = JFONT[store.get('jfont', 'line')] ? store.get('jfont', 'line') : 'line';
-const applyJa = () => { document.documentElement.style.setProperty('--font-j', JFONT[jaFont]); const s = $('jaFont'); if (s) s.value = jaFont; };
+const applyJa = () => { document.documentElement.style.setProperty('--font-j', JFONT[jaFont]); document.documentElement.classList.toggle('jl', jaFont === 'line'); const s = $('jaFont'); if (s) s.value = jaFont; };
 $('jaFont').addEventListener('change', e => { jaFont = JFONT[e.target.value] ? e.target.value : 'line'; store.set('jfont', jaFont); applyJa(); });
 applyJa();
 let clockFont = CFONT[store.get('cfont', 'archivo')] ? store.get('cfont', 'archivo') : 'archivo';
