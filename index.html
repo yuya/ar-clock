@@ -134,8 +134,13 @@ body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
 .tabs small{font-size:10px; font-weight:600; opacity:.75; max-width:100%; overflow:hidden; text-overflow:ellipsis}
 .tabs small:empty{display:none}
 .sheet .tabs button[aria-selected="true"]{background:#fff; color:#111; box-shadow:0 1px 6px rgba(0,0,0,.25)}
-.seg.rst{display:flex; justify-content:flex-end}
-.sheet .seg.rst button{flex:0 0 auto; min-height:36px; padding:6px 16px; font-size:12px}
+.lab.hl{align-self:stretch; display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+.lab .lh{font-size:11px; font-weight:600; opacity:.7; white-space:nowrap}
+.lab .lh i{font-style:normal; margin:0 .35em}
+.slide.rsk{padding-right:4px}
+.sheet .slide .rs{flex:0 0 auto; width:36px; height:36px; min-height:0; padding:0; display:grid; place-items:center; border:0; border-radius:50%; background:transparent; color:inherit; opacity:.85}
+.sheet .slide .rs:active{background:rgba(255,255,255,.18)}
+.sheet .slide .rs svg{width:18px; height:18px}
 .seg.thumbs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 .sheet .seg.thumbs button{position:relative; aspect-ratio:4/3; min-height:0; padding:0 4px 6px; display:flex; align-items:flex-end; justify-content:center; text-align:center; background-color:rgba(255,255,255,.14); background-size:cover; background-position:center; color:#fff; font-size:11px; font-weight:800; line-height:1.15; text-shadow:0 1px 3px rgba(0,0,0,.8); overflow:hidden; border-radius:12px; box-shadow:inset 0 -34px 24px -18px rgba(0,0,0,.7)}
 .sheet .seg.thumbs button[hidden]{display:none}
@@ -274,9 +279,9 @@ html.jl:lang(ja) .lab{font-weight:500}
   <div class="sheet-head"><h2 data-i18n="settings"></h2><button type="button" id="close" data-i18n="close"></button></div>
   <div class="tabs" id="tabs" role="tablist">
     <button type="button" role="tab" data-tab="src"><span data-i18n="tabSrc"></span></button>
-    <button type="button" role="tab" data-tab="base"><span data-i18n="tabBase"></span><small id="tsBase"></small></button>
-    <button type="button" role="tab" data-tab="look"><span data-i18n="tabLook"></span><small id="tsLook"></small></button>
-    <button type="button" role="tab" data-tab="fx"><span data-i18n="tabFx"></span><small id="tsFx"></small></button>
+    <button type="button" role="tab" data-tab="base"><span data-i18n="tabBase"></span></button>
+    <button type="button" role="tab" data-tab="look"><span data-i18n="tabLook"></span></button>
+    <button type="button" role="tab" data-tab="fx"><span data-i18n="tabFx"></span></button>
     <button type="button" role="tab" data-tab="view"><span data-i18n="tabView"></span></button>
     <button type="button" role="tab" data-tab="sound"><span data-i18n="tabSound"></span></button>
   </div>
@@ -310,7 +315,6 @@ html.jl:lang(ja) .lab{font-weight:500}
         <label class="lab" for="monoTone" data-i18n="monoTone"></label>
         <div class="slide"><span data-i18n="light"></span><input type="range" id="monoTone" min="0" max="1" step="0.01"><span data-i18n="dark"></span></div>
       </div></div>
-      <div class="seg rst"><button type="button" id="resetBase" data-i18n="reset"></button></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gLook"></h3>
@@ -335,7 +339,6 @@ html.jl:lang(ja) .lab{font-weight:500}
         <label class="lab" for="lineW" data-i18n="lineW"></label>
         <div class="slide"><span data-i18n="thin"></span><input type="range" id="lineW" min="0" max="1" step="0.01"><span data-i18n="thick"></span></div>
       </div></div>
-      <div class="seg rst"><button type="button" id="resetLook" data-i18n="reset"></button></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gFx"></h3>
@@ -1270,17 +1273,6 @@ const baseKs = kLoad('baseK'), lookKs = kLoad('lookK');
 const kOf = (o, k) => { const v = parseFloat(o[k]); return isNaN(v) ? 1 : Math.min(1, Math.max(0, v)); };
 $('baseK').addEventListener('input', () => { baseKs[base] = parseFloat($('baseK').value); store.set('baseK', JSON.stringify(baseKs)); });
 $('lookK').addEventListener('input', () => { lookKs[look] = parseFloat($('lookK').value); store.set('lookK', JSON.stringify(lookKs)); });
-$('resetBase').addEventListener('click', () => {
-  delete baseKs[base]; store.set('baseK', JSON.stringify(baseKs));
-  if (base === 'bit' || base === 'gb'){ bitAmt = .75; store.set('bitAmt', '0.75'); $('bitAmt').value = bitAmt; }
-  if (base === 'mono'){ monoTone = .5; store.set('monoTone', '0.5'); $('monoTone').value = monoTone; }
-  syncSrc();
-});
-$('resetLook').addEventListener('click', () => {
-  delete lookKs[look]; store.set('lookK', JSON.stringify(lookKs));
-  if (look === 'manga' || look === 'pop'){ lineW = .5; store.set('lineW', '0.5'); $('lineW').value = lineW; }
-  syncSrc();
-});
 $('bitAmt').addEventListener('input', () => { bitAmt = parseFloat($('bitAmt').value); store.set('bitAmt', String(bitAmt)); });
 $('monoTone').addEventListener('input', () => { monoTone = parseFloat($('monoTone').value); store.set('monoTone', String(monoTone)); });
 // 言語の切り替え
@@ -1307,7 +1299,7 @@ function syncSrc(){
   const opt = (id, on) => $(id).classList.toggle('on', !!on);
   nativeNotify(); updTabs();
   $('fxPix').setAttribute('aria-pressed', pixOn ? 'true' : 'false'); $('fxPix').textContent = tr('pix');
-  opt('optMono', base === 'mono'); opt('optBaseK', base !== 'color'); opt('optLookK', look !== 'none'); $('baseK').value = kOf(baseKs, base); $('lookK').value = kOf(lookKs, look); $('resetBase').parentNode.hidden = base === 'color'; $('resetLook').parentNode.hidden = look === 'none'; opt('optBit', base === 'bit' || base === 'gb'); opt('optLine', look === 'manga' || look === 'pop'); opt('optGlitch', glitchOn); opt('optVig', vigOn); opt('optOld', oldOn); opt('optPunch', punchOn);
+  opt('optMono', base === 'mono'); opt('optBaseK', base !== 'color'); opt('optLookK', look !== 'none'); $('baseK').value = kOf(baseKs, base); $('lookK').value = kOf(lookKs, look); opt('optBit', base === 'bit' || base === 'gb'); opt('optLine', look === 'manga' || look === 'pop'); opt('optGlitch', glitchOn); opt('optVig', vigOn); opt('optOld', oldOn); opt('optPunch', punchOn);
   $('fxPunch').setAttribute('aria-pressed', punchOn ? 'true' : 'false'); $('fxPunch').textContent = tr('punch');
   document.body.classList.toggle('k-knock', clockMode === 'cutout');
   document.querySelectorAll('#segMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === clockMode ? 'true' : 'false'));
@@ -1895,9 +1887,9 @@ function schema(){
           if (bs.length) items.push({ t:'buttons', cols, buttons:bs });
         }
         else if (c.classList.contains('opt')){ if (c.classList.contains('on') && c.firstElementChild) walk(c.firstElementChild); }
-        else if (c.classList.contains('lab')) items.push({ t:'label', text:c.textContent.trim() });
+        else if (c.classList.contains('lab')) items.push({ t:'label', text:(c.querySelector('.lt') || c).textContent.trim() });
         else if (c.classList.contains('slide')){
-          const i = c.querySelector('input'), sp = c.querySelectorAll('span'); if (!i) continue;
+          const i = c.querySelector('input'), pl = c.previousElementSibling, sp = pl && pl.querySelector('.lh') ? pl.querySelectorAll('.lh span') : c.querySelectorAll('span'); if (!i) continue;
           items.push({ t:'slider', id:i.id, min:+i.min, max:+i.max, step:+i.step || .01, value:+i.value, lo:sp[0] ? sp[0].textContent : '', hi:sp[1] ? sp[1].textContent : '' });
         }
         else if (c.classList.contains('note')){ const tx = c.textContent.trim(); if (tx) items.push({ t:'note', text:tx }); }
@@ -1921,6 +1913,7 @@ window.ARClock = {
     const el = $(id); if (el) el.click(); return schema();
   },
   wake(){ wake(); },
+  debug(){ const n = performance.now(); return { src:JSON.stringify(src), cardOn, rc:!!rc, clipHoldOn, quiet:clipQuiet(), sup:Math.round(clipSupUntil - n), unlock:Math.round(n - (A.unlockedAt || -1e9)), clipUrl:!!clipUrl, clipDown:!!clipDown, away:!!away }; },
   slide(id, v){ const el = $(id); if (el){ el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); } },
   // 自動確認用：最初の画面を「サンプル映像」で通す
   start(sound){ $('demoStart').click(); setTimeout(() => $(sound ? 'soundYes' : 'soundNo').click(), 200); }
@@ -1964,6 +1957,22 @@ function autoResume(){
 }
 // ── 設定：タブと、ベース／フィルタのサムネイル
 // サムネイルは通信なし。設定を開いたとき（とタブを替えたとき）、いま映っている1コマに、各ベース・フィルタを1つずつ端末のGPUでかけて作る（1フレームに1枚）
+// スライダー：「弱 → 強」の目安は見出しの右へ移し、空いたバーの右端にリセット（初期値に戻す）を載せる
+const SLIDE_DEF = { baseK:1, lookK:1, bitAmt:.75, monoTone:.5, lineW:.5, glitchAmt:.4, vigAmt:.6, oldAmt:.5, punchAmt:.5 };
+document.querySelectorAll('.sheet .slide').forEach(sl => {
+  const inp = sl.querySelector('input[type=range]'); if (!inp || !(inp.id in SLIDE_DEF)) return;
+  const lab = sl.closest('.opt-in') && sl.closest('.opt-in').querySelector('label.lab[for="' + inp.id + '"]');
+  const sp = sl.querySelectorAll(':scope > span');
+  if (lab && sp.length === 2){
+    const t = document.createElement('span'); t.className = 'lt'; t.dataset.i18n = lab.dataset.i18n; lab.removeAttribute('data-i18n'); lab.textContent = ''; lab.appendChild(t);
+    const lh = document.createElement('span'); lh.className = 'lh'; lh.append(sp[0], Object.assign(document.createElement('i'), { textContent:'→' }), sp[1]); lab.appendChild(lh); lab.classList.add('hl');
+  }
+  const rs = document.createElement('button'); rs.type = 'button'; rs.className = 'rs'; rs.dataset.i18nLabel = 'reset';
+  rs.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"/></svg>';
+  rs.addEventListener('click', () => { inp.value = SLIDE_DEF[inp.id]; inp.dispatchEvent(new Event('input', { bubbles:true })); });
+  sl.appendChild(rs); sl.classList.add('rsk');
+});
+applyLang();
 const TAB_OF = { gSrc:'src', gBase:'base', gLook:'look', gFx:'fx', gMode:'view', gView:'view', gLang:'view', gSound:'sound', gStyle:'sound', gMood:'sound', gVol:'sound' };
 let tab = store.get('tab', 'look'); if (!['src', 'base', 'look', 'fx', 'view', 'sound'].includes(tab)) tab = 'look';
 document.querySelectorAll('.sheet-body > .grp').forEach(g => { const h = g.querySelector('h3 [data-i18n], h3[data-i18n]'); g.dataset.tab = (h && TAB_OF[h.dataset.i18n]) || 'view'; });
@@ -1994,8 +2003,6 @@ function showTab(t){
 }
 function onSheetOpen(){ queueThumbs(); }
 function updTabs(){
-  $('tsBase').textContent = tr(base); $('tsLook').textContent = tr(look);
-  $('tsFx').textContent = [glitchOn ? tr('glitch') : '', vigOn ? tr('vig') : '', oldOn ? tr('old') : '', punchOn ? tr('punch') : ''].filter(Boolean).join('・');
 }
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 showTab(tab);
