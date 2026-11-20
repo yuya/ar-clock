@@ -134,6 +134,17 @@ body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
 .tabs small{font-size:10px; font-weight:600; opacity:.75; max-width:100%; overflow:hidden; text-overflow:ellipsis}
 .tabs small:empty{display:none}
 .sheet .tabs button[aria-selected="true"]{background:#fff; color:#111; box-shadow:0 1px 6px rgba(0,0,0,.25)}
+.sheet .trk{position:relative; flex:1 1 auto; min-width:0; display:block}
+.sheet input[type=range]{-webkit-appearance:none; appearance:none; display:block; width:100%; height:40px; background:transparent; position:relative; z-index:1}
+.sheet input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:linear-gradient(to right,#fff var(--p,50%),rgba(255,255,255,.28) var(--p,50%))}
+.sheet input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:24px; height:24px; margin-top:-10px; border-radius:50%; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.35)}
+.sheet input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:rgba(255,255,255,.28)}
+.sheet input[type=range]::-moz-range-progress{height:4px; border-radius:2px; background:#fff}
+.sheet input[type=range]::-moz-range-thumb{width:24px; height:24px; border:0; border-radius:50%; background:#fff}
+/* 11段の目盛り。つまみの中心が止まる位置に点を打つ（真ん中だけ少し大きく） */
+.sheet .ticks{position:absolute; left:12px; right:12px; top:calc(50% + 9px); height:4px; display:flex; justify-content:space-between; pointer-events:none}
+.sheet .ticks i{width:3px; height:3px; margin:0 -1.5px; border-radius:50%; background:rgba(255,255,255,.5)}
+.sheet .ticks i:nth-child(6){width:5px; height:5px; margin:-1px -2.5px 0; background:rgba(255,255,255,.85)}
 .lab.hl{align-self:stretch; display:flex; align-items:baseline; justify-content:space-between; gap:12px}
 .lab .lh{font-size:11px; font-weight:600; opacity:.7; white-space:nowrap}
 .lab .lh i{font-style:normal; margin:0 .35em}
@@ -304,16 +315,16 @@ html.jl:lang(ja) .lab{font-weight:500}
       </div>
       <div class="opt" id="optBaseK"><div class="opt-in">
         <label class="lab" for="baseK" data-i18n="amt"></label>
-        <div class="slide"><span data-i18n="weak"></span><input type="range" id="baseK" min="0" max="1" step="0.01"><span data-i18n="strong"></span></div>
+        <div class="slide"><span data-i18n="weak"></span><input type="range" id="baseK" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
       </div></div>
       <div class="opt" id="optBit"><div class="opt-in">
         <div class="seg"><button type="button" id="fxPix" aria-pressed="false"></button></div>
         <label class="lab" for="bitAmt" data-i18n="bitAmt"></label>
-        <div class="slide"><span data-i18n="bitLo"></span><input type="range" id="bitAmt" min="0" max="1" step="0.01"><span data-i18n="bitHi"></span></div>
+        <div class="slide"><span data-i18n="bitLo"></span><input type="range" id="bitAmt" min="0" max="1" step="0.1"><span data-i18n="bitHi"></span></div>
       </div></div>
       <div class="opt" id="optMono"><div class="opt-in">
         <label class="lab" for="monoTone" data-i18n="monoTone"></label>
-        <div class="slide"><span data-i18n="light"></span><input type="range" id="monoTone" min="0" max="1" step="0.01"><span data-i18n="dark"></span></div>
+        <div class="slide"><span data-i18n="light"></span><input type="range" id="monoTone" min="0" max="1" step="0.1"><span data-i18n="dark"></span></div>
       </div></div>
     </div>
     <div class="grp">
@@ -333,11 +344,11 @@ html.jl:lang(ja) .lab{font-weight:500}
       </div>
       <div class="opt" id="optLookK"><div class="opt-in">
         <label class="lab" for="lookK" data-i18n="amt"></label>
-        <div class="slide"><span data-i18n="weak"></span><input type="range" id="lookK" min="0" max="1" step="0.01"><span data-i18n="strong"></span></div>
+        <div class="slide"><span data-i18n="weak"></span><input type="range" id="lookK" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
       </div></div>
       <div class="opt" id="optLine"><div class="opt-in">
         <label class="lab" for="lineW" data-i18n="lineW"></label>
-        <div class="slide"><span data-i18n="thin"></span><input type="range" id="lineW" min="0" max="1" step="0.01"><span data-i18n="thick"></span></div>
+        <div class="slide"><span data-i18n="thin"></span><input type="range" id="lineW" min="0" max="1" step="0.1"><span data-i18n="thick"></span></div>
       </div></div>
     </div>
     <div class="grp">
@@ -350,19 +361,19 @@ html.jl:lang(ja) .lab{font-weight:500}
       </div>
       <div class="opt" id="optGlitch"><div class="opt-in">
         <label class="lab" for="glitchAmt" data-i18n="glitchAmt"></label>
-        <div class="slide"><span data-i18n="weak"></span><input type="range" id="glitchAmt" min="0" max="1" step="0.01"><span data-i18n="strong"></span></div>
+        <div class="slide"><span data-i18n="weak"></span><input type="range" id="glitchAmt" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
       </div></div>
       <div class="opt" id="optVig"><div class="opt-in">
         <label class="lab" for="vigAmt" data-i18n="vigAmt"></label>
-        <div class="slide"><span data-i18n="weak"></span><input type="range" id="vigAmt" min="0" max="1" step="0.01"><span data-i18n="strong"></span></div>
+        <div class="slide"><span data-i18n="weak"></span><input type="range" id="vigAmt" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
       </div></div>
       <div class="opt" id="optOld"><div class="opt-in">
         <label class="lab" for="oldAmt" data-i18n="oldAmt"></label>
-        <div class="slide"><span data-i18n="weak"></span><input type="range" id="oldAmt" min="0" max="1" step="0.01"><span data-i18n="strong"></span></div>
+        <div class="slide"><span data-i18n="weak"></span><input type="range" id="oldAmt" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
       </div></div>
       <div class="opt" id="optPunch"><div class="opt-in">
         <label class="lab" for="punchAmt" data-i18n="punchAmt"></label>
-        <div class="slide"><span data-i18n="weak"></span><input type="range" id="punchAmt" min="0" max="1" step="0.01"><span data-i18n="strong"></span></div>
+        <div class="slide"><span data-i18n="weak"></span><input type="range" id="punchAmt" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
       </div></div>
       <p class="note" data-i18n="fxNote"></p>
     </div>
@@ -421,7 +432,7 @@ html.jl:lang(ja) .lab{font-weight:500}
     </div>
     <div class="grp">
       <h3><label for="vol" data-i18n="gVol"></label></h3>
-      <div class="slide"><input type="range" id="vol" min="0" max="1" step="0.01"></div>
+      <div class="slide"><input type="range" id="vol" min="0" max="1" step="0.1"></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gLang"></h3>
@@ -1222,13 +1233,16 @@ function syncLoc(){
   $('locRevoke').hidden = !(c && c.v === 'yes');
 }
 // グリッチの強さ：弱いと、たまに細くずれて色が少しにじむ程度。強いと、ずれる回数と幅、色のにじみが大きくなる
+// スライダーは11段（0〜10）。真ん中＝いままでの標準。値の中身（保存しているもの）は従来どおりの量のまま
+const K2S = k => k <= 1 ? k / 2 : .5 + (k - 1) / 1.2, S2K = s => s <= .5 ? s * 2 : 1 + (s - .5) * 1.2;   // 強さ：右半分は標準より強調（最大1.6倍）
+const toS = (v, d) => v <= d ? v / d * .5 : .5 + (v - d) / (1 - d) * .5, toV = (s, d) => s <= .5 ? s * 2 * d : d + (s - .5) * 2 * (1 - d);
 let glitchAmt = parseFloat(store.get('glitchAmt', '0.4')); if (isNaN(glitchAmt)) glitchAmt = .4; glitchAmt = Math.min(1, Math.max(0, glitchAmt));
-$('glitchAmt').value = glitchAmt;
-$('glitchAmt').addEventListener('input', () => { glitchAmt = parseFloat($('glitchAmt').value); store.set('glitchAmt', String(glitchAmt)); if (!reduce) tap = Math.max(tap, .5); });
+$('glitchAmt').value = toS(glitchAmt, .4);
+$('glitchAmt').addEventListener('input', () => { glitchAmt = toV(parseFloat($('glitchAmt').value), .4); store.set('glitchAmt', String(glitchAmt)); if (!reduce) tap = Math.max(tap, .5); });
 // 周辺減光（ロモ風）：四隅を暗く落とす。ほかのフィルタやグリッチに重ねられる
 let vigOn = store.get('vig', '0') === '1', vigAmt = parseFloat(store.get('vigAmt', '0.6')); if (isNaN(vigAmt)) vigAmt = .6; vigAmt = Math.min(1, Math.max(0, vigAmt));
-$('vigAmt').value = vigAmt;
-$('vigAmt').addEventListener('input', () => { vigAmt = parseFloat($('vigAmt').value); store.set('vigAmt', String(vigAmt)); });
+$('vigAmt').value = toS(vigAmt, .6);
+$('vigAmt').addEventListener('input', () => { vigAmt = toV(parseFloat($('vigAmt').value), .6); store.set('vigAmt', String(vigAmt)); });
 // ビートパンチ：毎秒の音で映像が一瞬だけ寄る。10秒の長い音では大きく寄る
 let punchOn = store.get('punch', '0') === '1', punchAmt = parseFloat(store.get('punchAmt', '0.5')), zoom = 0; if (isNaN(punchAmt)) punchAmt = .5; punchAmt = Math.min(1, Math.max(0, punchAmt));
 $('punchAmt').value = punchAmt;
@@ -1266,14 +1280,14 @@ $('monoTone').value = monoTone;
 let pixOn = store.get('pix', '0') === '1';
 $('fxPix').addEventListener('click', () => { pixOn = !pixOn; store.set('pix', pixOn ? '1' : '0'); changed(false); });
 let bitAmt = parseFloat(store.get('bitAmt', '0.75')); if (isNaN(bitAmt)) bitAmt = .75; bitAmt = Math.min(1, Math.max(0, bitAmt));
-$('bitAmt').value = bitAmt;
+$('bitAmt').value = toS(bitAmt, .75);
 // 強さ：ベースとフィルタそれぞれに、選んでいるもの単位で覚える（既定は最大）
 const kLoad = k => { try{ const o = JSON.parse(store.get(k, '{}')); return o && typeof o === 'object' ? o : {}; }catch(e){ return {}; } };
 const baseKs = kLoad('baseK'), lookKs = kLoad('lookK');
-const kOf = (o, k) => { const v = parseFloat(o[k]); return isNaN(v) ? 1 : Math.min(1, Math.max(0, v)); };
-$('baseK').addEventListener('input', () => { baseKs[base] = parseFloat($('baseK').value); store.set('baseK', JSON.stringify(baseKs)); });
-$('lookK').addEventListener('input', () => { lookKs[look] = parseFloat($('lookK').value); store.set('lookK', JSON.stringify(lookKs)); });
-$('bitAmt').addEventListener('input', () => { bitAmt = parseFloat($('bitAmt').value); store.set('bitAmt', String(bitAmt)); });
+const kOf = (o, k) => { const v = parseFloat(o[k]); return isNaN(v) ? 1 : Math.min(1.6, Math.max(0, v)); };
+$('baseK').addEventListener('input', () => { baseKs[base] = S2K(parseFloat($('baseK').value)); store.set('baseK', JSON.stringify(baseKs)); });
+$('lookK').addEventListener('input', () => { lookKs[look] = S2K(parseFloat($('lookK').value)); store.set('lookK', JSON.stringify(lookKs)); });
+$('bitAmt').addEventListener('input', () => { bitAmt = toV(parseFloat($('bitAmt').value), .75); store.set('bitAmt', String(bitAmt)); });
 $('monoTone').addEventListener('input', () => { monoTone = parseFloat($('monoTone').value); store.set('monoTone', String(monoTone)); });
 // 言語の切り替え
 $('segLang').addEventListener('click', ev => {
@@ -1299,7 +1313,7 @@ function syncSrc(){
   const opt = (id, on) => $(id).classList.toggle('on', !!on);
   nativeNotify(); updTabs();
   $('fxPix').setAttribute('aria-pressed', pixOn ? 'true' : 'false'); $('fxPix').textContent = tr('pix');
-  opt('optMono', base === 'mono'); opt('optBaseK', base !== 'color'); opt('optLookK', look !== 'none'); $('baseK').value = kOf(baseKs, base); $('lookK').value = kOf(lookKs, look); opt('optBit', base === 'bit' || base === 'gb'); opt('optLine', look === 'manga' || look === 'pop'); opt('optGlitch', glitchOn); opt('optVig', vigOn); opt('optOld', oldOn); opt('optPunch', punchOn);
+  opt('optMono', base === 'mono'); opt('optBaseK', base !== 'color'); opt('optLookK', look !== 'none'); $('baseK').value = K2S(kOf(baseKs, base)); $('lookK').value = K2S(kOf(lookKs, look)); paintSliders(); opt('optBit', base === 'bit' || base === 'gb'); opt('optLine', look === 'manga' || look === 'pop'); opt('optGlitch', glitchOn); opt('optVig', vigOn); opt('optOld', oldOn); opt('optPunch', punchOn);
   $('fxPunch').setAttribute('aria-pressed', punchOn ? 'true' : 'false'); $('fxPunch').textContent = tr('punch');
   document.body.classList.toggle('k-knock', clockMode === 'cutout');
   document.querySelectorAll('#segMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === clockMode ? 'true' : 'false'));
@@ -1390,9 +1404,9 @@ void main(){
   if(sh>0.){ cr=texture2D(u_tex,cover(uv+vec2(sh,0.))).rgb; cb=texture2D(u_tex,cover(uv-vec2(sh,0.))).rgb; }
   bool mono=u_mono>.5; vec2 v2;
   vec3 c0=vec3(cr.r,cg.g,cb.b);
-  vec3 c=mono?mix(c0,pow(vec3(L(cr),L(cg),L(cb)),vec3(u_gamma)),u_bk):c0;
-  float l=mono?mix(L(cg),pow(L(cg),u_gamma),u_bk):L(cg);
-  vec3 col, nc=mono?mix(c,mix(u_ink,u_paper,smoothstep(vec3(.04),vec3(.96),c)),u_bk):c;   // nc＝フィルタなしの絵（強さの基準）
+  vec3 c=mono?clamp(mix(c0,pow(vec3(L(cr),L(cg),L(cb)),vec3(u_gamma)),u_bk),0.,1.):c0;
+  float l=mono?clamp(mix(L(cg),pow(L(cg),u_gamma),u_bk),0.,1.):L(cg);
+  vec3 col, nc=mono?clamp(mix(c,mix(u_ink,u_paper,smoothstep(vec3(.04),vec3(.96),c)),u_bk),0.,1.):c;   // nc＝フィルタなしの絵（強さの基準）
   if(lk>6.5){
     float tl=floor(lk+.5);
     if(tl<7.5){
@@ -1486,12 +1500,12 @@ void main(){
     vec2 v=uv0-.5; c*=1.-.42*dot(v,v);
     col=c;
   }
-  if(lk>.5) col=mix(nc,col,u_lkk);   // フィルタの強さ
+  if(lk>.5) col=clamp(mix(nc,col,u_lkk),0.,1.);   // フィルタの強さ
   if(u_sep>.5){
     // セピア：明るさを 焦げ茶→琥珀→生成り の3点でつなぐ
     float sl=clamp(L(col),0.,1.);
     vec3 sp=sl<.5?mix(vec3(.10,.065,.04),vec3(.60,.45,.30),sl*2.):mix(vec3(.60,.45,.30),vec3(.98,.93,.81),sl*2.-1.);
-    col=mix(col,sp,u_bk);
+    col=clamp(mix(col,sp,u_bk),0.,1.);
   }
   col*=1.-vig;
   if(u_vig>0.){
@@ -1545,7 +1559,7 @@ void main(){
       float v=clamp(L(col)+(thr-.5)*u_bitk*.4,0.,.999); float k=floor(v*4.);
       col=k<1.?vec3(.059,.220,.059):k<2.?vec3(.188,.384,.188):k<3.?vec3(.545,.675,.059):vec3(.608,.737,.059);
     }
-    col=mix(pre,col,u_bk);
+    col=clamp(mix(pre,col,u_bk),0.,1.);
   }
   gl_FragColor=vec4(col,1.);
 }`;
@@ -1958,7 +1972,7 @@ function autoResume(){
 // ── 設定：タブと、ベース／フィルタのサムネイル
 // サムネイルは通信なし。設定を開いたとき（とタブを替えたとき）、いま映っている1コマに、各ベース・フィルタを1つずつ端末のGPUでかけて作る（1フレームに1枚）
 // スライダー：「弱 → 強」の目安は見出しの右へ移し、空いたバーの右端にリセット（初期値に戻す）を載せる
-const SLIDE_DEF = { baseK:1, lookK:1, bitAmt:.75, monoTone:.5, lineW:.5, glitchAmt:.4, vigAmt:.6, oldAmt:.5, punchAmt:.5 };
+const SLIDE_DEF = { baseK:.5, lookK:.5, bitAmt:.5, monoTone:.5, lineW:.5, glitchAmt:.5, vigAmt:.5, oldAmt:.5, punchAmt:.5 };
 document.querySelectorAll('.sheet .slide').forEach(sl => {
   const inp = sl.querySelector('input[type=range]'); if (!inp || !(inp.id in SLIDE_DEF)) return;
   const lab = sl.closest('.opt-in') && sl.closest('.opt-in').querySelector('label.lab[for="' + inp.id + '"]');
@@ -1967,6 +1981,8 @@ document.querySelectorAll('.sheet .slide').forEach(sl => {
     const t = document.createElement('span'); t.className = 'lt'; t.dataset.i18n = lab.dataset.i18n; lab.removeAttribute('data-i18n'); lab.textContent = ''; lab.appendChild(t);
     const lh = document.createElement('span'); lh.className = 'lh'; lh.append(sp[0], Object.assign(document.createElement('i'), { textContent:'→' }), sp[1]); lab.appendChild(lh); lab.classList.add('hl');
   }
+  const trk = document.createElement('span'); trk.className = 'trk'; inp.before(trk); trk.appendChild(inp);
+  const tk = document.createElement('span'); tk.className = 'ticks'; tk.setAttribute('aria-hidden', 'true'); for (let i = 0; i <= 10; i++) tk.appendChild(document.createElement('i')); trk.appendChild(tk);
   const rs = document.createElement('button'); rs.type = 'button'; rs.className = 'rs'; rs.dataset.i18nLabel = 'reset';
   rs.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"/></svg>';
   rs.addEventListener('click', () => { inp.value = SLIDE_DEF[inp.id]; inp.dispatchEvent(new Event('input', { bubbles:true })); });
@@ -2002,8 +2018,10 @@ function showTab(t){
   document.querySelector('.sheet-body').scrollTop = 0; queueThumbs();
 }
 function onSheetOpen(){ queueThumbs(); }
-function updTabs(){
-}
+function updTabs(){ paintSliders(); }
+// つまみの左側を塗る（範囲スライダーの見た目をそろえるため、自前で描いている）
+function paintSliders(){ document.querySelectorAll('.sheet input[type=range]').forEach(i => i.style.setProperty('--p', ((i.value - i.min) / ((i.max - i.min) || 1) * 100) + '%')); }
+document.addEventListener('input', e => { if (e.target.matches && e.target.matches('.sheet input[type=range]')) paintSliders(); });
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 showTab(tab);
 syncUI(); syncSrc(); wake(); tickClock();
