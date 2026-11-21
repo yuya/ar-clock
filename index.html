@@ -854,7 +854,7 @@ const I18N = {
     gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', clockFont:'時計のフォント', jaFont:'日本語のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
-    gFx:'エフェクト', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
+    gFx:'効果', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
     locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', amt:'強さ', reset:'リセット', sepia:'セピア', strong:'強', fxNote:'映像を2回タップすると、その場でグリッチが走ります。1回タップは一時停止です。',
     gSrc:'映像', camBack:'外側カメラ', camFront:'内側カメラ',
     gStyle:'音色', piano:'ピアノ', electro:'エレクトロ', musicbox:'オルゴール', birds:'鳥のさえずり', chip:'8bit', lofi:'ローファイ', whistle:'口笛', forest:'虫の声', marimba:'マリンバ',
@@ -1938,28 +1938,14 @@ if (window.__arNativeApp) document.addEventListener('click', ev => {
 const IOS_WEB = !window.__arNativeApp && (/iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1));
 function hapticCover(){
   document.querySelectorAll('button').forEach(b => {
-    if (b.closest('.tabs, .thumbs')) return;   // タブとサムネの一覧は、指でスクロールするので、触覚用の部品を重ねない（重ねるとスクロールが始まらない）
     if (b.querySelector(':scope > .hx')) return;
     const i = document.createElement('input');
     i.className = 'hx'; i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1; i.setAttribute('aria-hidden', 'true');
     b.appendChild(i);   // タップはこのスイッチに当たり、そのままボタンのクリックとして1回だけ伝わる
   });
 }
-/* タブ・サムネ・スライダーは重ねる方式が使えない（スクロールやつまみの操作を邪魔する）ので、
-   隠したスイッチのラベルを押したことにしてカチッを出す（iOS 18 以降のブラウザ。指の操作の最中にしか鳴らない）。
-   アプリの中ではアプリ側の振動に頼む */
-const hxSw = document.createElement('label'); hxSw.style.display = 'none'; hxSw.setAttribute('aria-hidden', 'true');
-hxSw.innerHTML = '<input type="checkbox" switch tabindex="-1">'; document.body.appendChild(hxSw);
-addEventListener('click', e => { if (e.target === hxSw || e.target.parentNode === hxSw){ e.stopImmediatePropagation(); } }, true);
-hxSw.addEventListener('click', e => e.stopPropagation());
-function tick(kind){
-  if (window.__arNativeApp){ try{ window.webkit.messageHandlers.haptic.postMessage(kind || 'soft'); }catch(e){} return; }
-  if (IOS_WEB) try{ hxSw.click(); }catch(e){}
-}
-document.addEventListener('click', e => {
-  if (!e.isTrusted || window.__arNativeApp || !e.target.closest) return;   // アプリはボタンの振動を上でまとめて頼んでいる
-  if (e.target.closest('.tabs button, .thumbs button')) tick('tap');
-}, true);
+// アプリの中のスライダー：1段動くたびにアプリ側の振動を頼む（ブラウザでは、ドラッグ中に端末を鳴らす手段がない）
+function tick(kind){ if (window.__arNativeApp) try{ window.webkit.messageHandlers.haptic.postMessage(kind || 'soft'); }catch(e){} }
 // スライダー：1段動くたびにカチッ
 const slideLast = new WeakMap();
 document.addEventListener('input', e => {
