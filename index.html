@@ -284,6 +284,7 @@ html.jl:lang(ja) .lab{font-weight:500}
     <h2 data-i18n="clipAskT"></h2>
     <p data-i18n="clipAskD"></p>
     <button type="button" id="clipSave" class="primary" data-i18n="clipSave"></button>
+    <button type="button" id="clipRetake" data-i18n="clipRetake"></button>
     <button type="button" id="clipCancel" data-i18n="clipCancel"></button>
   </div>
 </div>
@@ -832,7 +833,7 @@ const I18N = {
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
-    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'Save the video?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
+    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'What to do with this clip?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipRetake:'Retake', clipRetakeHint:'Hold to record a new clip', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', clockFont:'Clock font', jaFont:'Japanese font', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
@@ -854,7 +855,7 @@ const I18N = {
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
-    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'ビデオを保存しますか？', clipAskD:'撮ったままの元のビデオを保存します。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
+    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'このクリップをどうしますか？', clipAskD:'保存するのは、撮ったままの元のビデオです。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipRetake:'撮り直す', clipRetakeHint:'長押しで新しく録画できます', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', clockFont:'時計のフォント', jaFont:'日本語のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'効果', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
@@ -1828,6 +1829,10 @@ cv.addEventListener('contextmenu', ev => ev.preventDefault());
 addEventListener('pagehide', () => { if (clipDown){ clearTimeout(clipDown.timer); clipDown = null; } clipHoldOn = false; clipEnd(true); });
 function clipAskClose(){ $('clipAsk').hidden = true; lastSec = -1; }
 $('clipCancel').addEventListener('click', clipAskClose);
+// 撮り直す：いまのクリップを捨ててカメラに戻す（録画は、いつも通り長押しで始める）
+$('clipRetake').addEventListener('click', () => {
+  clipAskClose(); clipPrev = null; clipDispose(); startCamera(); say(tr('clipRetakeHint'));
+});
 $('clipSave').addEventListener('click', () => {
   const f = clipFile; clipAskClose(); if (!f) return;
   if (navigator.canShare && navigator.canShare({ files:[f] })){ navigator.share({ files:[f] }).catch(() => {}); return; }
@@ -1837,7 +1842,7 @@ cv.addEventListener('click', () => {
   if (performance.now() < clipSupUntil){ if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; } return; }
   if (performance.now() - (A.unlockedAt || -1e9) < 700){ say(tr('audioBack')); return; }   // 止められていた音を戻すためのタップは、それだけに使う
   const inClip = src.kind === 'file' && src.clip;
-  if (inClip && !cardOn && !clipQuiet()){ tapTimer = null; clipClose(); return; }   // パネル・抜き文字の最中でなければ、シングルタップで解除
+  if (inClip && !clipQuiet()){ tapTimer = null; clipClose(); return; }   // クリップ再生中は、パネル・抜き文字が出ていてもシングルタップで解除
   if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; if (inClip) clipClose(); return; }   // ダブルタップは、いつでも解除
   { const v = pv(); if (v && v.paused && !pp.rev && !held()) v.play().catch(() => {}); }   // 映像が止まっていたら、このタップの中で動かし直す
   tapTimer = setTimeout(() => { tapTimer = null; }, 270);
