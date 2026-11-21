@@ -76,6 +76,9 @@ html:lang(ja) .start p[data-i18n="desc"]{white-space:nowrap; font-size:min(13px,
 /* 抜き文字：黒地は乗算、白地はスクリーンで重ねると、数字の部分だけ下の映像が見える */
 body.k-knock .card{background:#000; color:#fff; mix-blend-mode:multiply; gap:0}
 body.k-knock .card.inv{background:#fff; color:#000; mix-blend-mode:screen}
+.card.tw{display:none}
+body.k-knock .card.tw{display:flex; background:#101010; color:#000; mix-blend-mode:plus-lighter; gap:0; pointer-events:none}
+body.k-knock .card.tw.inv{display:none}
 body.k-knock .time{white-space:pre-line; font-size:min(47vw,30vh); line-height:.84; letter-spacing:-.02em; font-weight:900}
 body.k-knock .sub{display:none}
 .time.tk{animation:tk .22s cubic-bezier(.2,.9,.2,1)}
@@ -1658,19 +1661,29 @@ const HIDE = { l:'inset(0 100% 0 0)', r:'inset(0 0 0 100%)', t:'inset(0 0 100% 0
 let top = 0, inv = false, horiz = Math.random() < .5, hs = Math.random() < .5 ? 0 : 1, vs = Math.random() < .5 ? 0 : 1;
 // 動きは「左右」と「上下」を交互にし、同じ向きの中でも側を交互にする（上→右→下→左…のように一巡する）
 const side = () => { horiz = !horiz; if (horiz){ hs = 1 - hs; return 'lr'[hs]; } vs = 1 - vs; return 'tb'[vs]; };
+// 抜き文字の黒いパネルを、Safari のバー（#101010）と同じ色にするための「ふたご」。
+// 黒地は乗算なので一様な色が出せない。そこで同じ形の札を足し算で重ね、地にだけ #101010 を足す（文字は黒なので映像はそのまま）
+cards.forEach(el => { const t = el.cloneNode(true); t.id = el.id + 'T'; t.classList.add('tw'); t.setAttribute('aria-hidden', 'true'); el.after(t); el._tw = t; });
+function twSync(el){
+  const t = el._tw; if (!t) return;
+  t.style.transition = el.style.transition; t.style.webkitClipPath = el.style.webkitClipPath; t.style.clipPath = el.style.clipPath; t.style.zIndex = el.style.zIndex;
+  t.classList.toggle('inv', el.classList.contains('inv'));
+  const a = el.querySelector('.ctime'), b = t.querySelector('.ctime'); b.textContent = a.textContent;
+  if (a.classList.contains('tk')){ b.classList.remove('tk'); void b.offsetWidth; } b.className = a.className;
+}
 function clip(el, v, anim){
   el.style.transition = anim && !reduce ? 'clip-path .42s ' + EASE + ', -webkit-clip-path .42s ' + EASE : 'none';
-  el.style.webkitClipPath = v; el.style.clipPath = v;
+  el.style.webkitClipPath = v; el.style.clipPath = v; twSync(el);
 }
 function cardIn(text){
   if (clockMode === 'cutout'){
     // 抜き文字：カードは10秒に1枚だけ。毎秒、数字だけがカチッと替わる
     text = text.replace(/ /g, '\n');
-    if (cardOn){ const tm = cards[top].querySelector('.ctime'); tm.textContent = text; if (!reduce){ tm.classList.remove('tk'); void tm.offsetWidth; tm.classList.add('tk'); } return; }
+    if (cardOn){ const tm = cards[top].querySelector('.ctime'); tm.textContent = text; if (!reduce){ tm.classList.remove('tk'); void tm.offsetWidth; tm.classList.add('tk'); } twSync(cards[top]); return; }
   }
   const prev = cards[top]; top = 1 - top; inv = !inv; const el = cards[top];
   el.querySelector('.ctime').textContent = text; el.classList.toggle('inv', inv);
-  prev.style.zIndex = 3; el.style.zIndex = 4; 
+  prev.style.zIndex = 3; el.style.zIndex = 4; twSync(prev);
   clip(el, HIDE[side()], false); void el.offsetWidth; clip(el, 'inset(0 0 0 0)', true);
   cardOn = true;
 }
