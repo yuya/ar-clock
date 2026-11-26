@@ -236,6 +236,15 @@ html.jl:lang(ja) .lab{font-weight:500}
 #start .alt button:active, #start .alt .btn:active{background:rgba(255,255,255,.12)}
 #start .err{color:#fff}
 #start .sdate{align-self:flex-end; margin-top:10px; font-family:var(--font-d); font-weight:600; font-size:13px; letter-spacing:.08em; opacity:.85}
+/* 日本語の組版（参考: qiita tofu_frontend「日本語フォント」記事）
+   - 和欧間のアキを自動で入れ、行頭などの約物のアキを詰める。小書きかな・長音を行頭に置かない
+   - 長い英単語や URL ははみ出さずに折る（break-all は日本語の禁則まで外すので使わない）
+   - 見出し・ボタンなど短い文だけ、文節で折って行の長さをそろえる。palt（字詰め）はキャッチだけ
+   - 時刻・入力欄は自動アキを切る（数字の並びとカーソル位置のため） */
+body{text-autospace:normal; text-spacing-trim:trim-start; line-break:strict; overflow-wrap:anywhere}
+.time, .ctime, .rec, input, select, textarea{text-autospace:no-autospace}
+h2, h3, .catch, .modal p, .start p, .note, .toast, .hint, button, label.btn, .lab{word-break:auto-phrase; text-wrap:balance}
+html:lang(ja) .catch{font-feature-settings:"palt"}
 </style>
 
 </head>
