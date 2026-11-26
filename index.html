@@ -236,10 +236,10 @@ body.coaching .card{visibility:hidden}
 @keyframes coachIn{from{opacity:0}}
 @keyframes coachPress{0%,100%{transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,.5)} 40%{transform:scale(.9)} 70%{box-shadow:0 0 0 22px rgba(255,255,255,0)}}
 /* 押した指の下に溜まるリング（満ちたら録画） */
-.pring{position:fixed; z-index:35; width:88px; height:88px; margin:-44px 0 0 -44px; pointer-events:none}
+.pring{position:fixed; z-index:35; width:176px; height:176px; margin:-88px 0 0 -88px; pointer-events:none}   /* 指に隠れないよう大きめ（直径176px） */
 .pring[hidden]{display:none}
 .pring svg{width:100%; height:100%; transform:rotate(-90deg)}
-.pring circle{fill:none; stroke-width:4}
+.pring circle{fill:none; stroke-width:3}
 .pring .pr-t{stroke:rgba(255,255,255,.35)}
 .pring .pr-f{stroke:#fff; stroke-linecap:round; stroke-dasharray:214; stroke-dashoffset:214}
 .pring.go .pr-f{transition:stroke-dashoffset var(--d,300ms) linear; stroke-dashoffset:0}
