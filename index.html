@@ -44,6 +44,11 @@ body{
 .tag{position:absolute; z-index:1; color:#fff; mix-blend-mode:difference; pointer-events:none;
   font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.18em; font-variant-numeric:tabular-nums}
 .tag.tl{left:max(16px,var(--sl)); top:calc(var(--st) + 22px)} .tag.br{right:max(16px,var(--sr)); bottom:calc(var(--sb) + 18px)}
+/* 場所は上、日付は下。どちらも設定ボタンの隣の角に置き、二つは互いに対角になる（設定ボタンの対角の角は空ける） */
+body[data-gear="tl"] #tagPlace, body[data-gear="br"] #tagPlace{left:auto; right:max(16px,var(--sr)); text-align:right}
+body[data-gear="tl"] #tagDate, body[data-gear="br"] #tagDate{right:auto; left:max(16px,var(--sl)); text-align:left}
+/* 最初の画面では、場所・日付・設定ボタンを出さない */
+body:has(#start:not([hidden])) .tag, body:has(#start:not([hidden])) #menu{visibility:hidden}
 body{--hx:0px} body[data-gear="bl"]{--hx:54px} body.hasflip{--hx:54px} body.hasflip[data-gear="bl"]{--hx:108px}
 .hint{position:absolute; z-index:1; left:calc(max(12px,var(--sl)) + var(--hx)); bottom:calc(var(--sb) + 12px); pointer-events:none; font-size:12px; padding:7px 12px}
 
@@ -247,7 +252,8 @@ body.coaching .card{visibility:hidden}
   display:flex; flex-direction:column; justify-content:flex-end; align-items:stretch; gap:0; text-align:left; overflow:auto;
   padding:calc(env(safe-area-inset-top) + 24px) max(24px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 24px) max(24px,env(safe-area-inset-left))}
 #start h2{position:absolute; left:max(24px,env(safe-area-inset-left)); top:calc(env(safe-area-inset-top) + 30px); font-family:var(--font-d); font-weight:800; font-size:15px; letter-spacing:.24em; margin:0; line-height:1}
-#start .catch{font-family:var(--font-d); font-weight:800; font-size:clamp(34px,11vw,48px); line-height:1.18; letter-spacing:.02em; margin:0; max-width:6.6em; text-wrap:wrap; word-break:normal}
+#start .catch{font-family:var(--font-d); font-weight:800; font-size:clamp(30px,9vw,44px); line-height:1.18; letter-spacing:.02em; margin:0; text-wrap:wrap; word-break:normal}
+html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw - 48px) / 10.2))}
 #start p[data-i18n="desc"]{margin-top:14px; font-size:min(14px,3.5vw); font-weight:600; opacity:.88}
 #start .go{margin-top:36px; width:100%; max-width:460px; display:flex; flex-direction:column; align-items:stretch; gap:10px}
 #start .primary{min-height:58px; border-radius:18px; font-size:18px; font-weight:800; letter-spacing:.04em}
@@ -313,7 +319,7 @@ body.coaching .card{visibility:hidden}
     <button type="button" id="locNo" data-i18n="locNo"></button>
   </div>
 </div>
-<button type="button" id="menu" data-c="tr" data-i18n-label="settings" aria-expanded="false" aria-controls="sheet"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M19.15 10.08 L21.88 10.44 L21.88 13.56 L19.15 13.92 L18.41 15.70 L20.09 17.88 L17.88 20.09 L15.70 18.41 L13.92 19.15 L13.56 21.88 L10.44 21.88 L10.08 19.15 L8.30 18.41 L6.12 20.09 L3.91 17.88 L5.59 15.70 L4.85 13.92 L2.12 13.56 L2.12 10.44 L4.85 10.08 L5.59 8.30 L3.91 6.12 L6.12 3.91 L8.30 5.59 L10.08 4.85 L10.44 2.12 L13.56 2.12 L13.92 4.85 L15.70 5.59 L17.88 3.91 L20.09 6.12 L18.41 8.30Z M12 8.3a3.7 3.7 0 1 0 0 7.4a3.7 3.7 0 1 0 0-7.4Z"/></svg></button>
+<button type="button" id="menu" data-c="br" data-i18n-label="settings" aria-expanded="false" aria-controls="sheet"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M19.15 10.08 L21.88 10.44 L21.88 13.56 L19.15 13.92 L18.41 15.70 L20.09 17.88 L17.88 20.09 L15.70 18.41 L13.92 19.15 L13.56 21.88 L10.44 21.88 L10.08 19.15 L8.30 18.41 L6.12 20.09 L3.91 17.88 L5.59 15.70 L4.85 13.92 L2.12 13.56 L2.12 10.44 L4.85 10.08 L5.59 8.30 L3.91 6.12 L6.12 3.91 L8.30 5.59 L10.08 4.85 L10.44 2.12 L13.56 2.12 L13.92 4.85 L15.70 5.59 L17.88 3.91 L20.09 6.12 L18.41 8.30Z M12 8.3a3.7 3.7 0 1 0 0 7.4a3.7 3.7 0 1 0 0-7.4Z"/></svg></button>
 <div class="toast" id="toast" role="status"></div>
 <div class="coach" id="coach" hidden><div class="coach-ring"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-1.5v-2a1.5 1.5 0 0 1 3 0V12m0-1.5a1.5 1.5 0 0 1 3 0V12m0-.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-2 .2a6 6 0 0 1-5-2.7L4.4 17a1.5 1.5 0 0 1 2.4-1.8L8 16.5"/></svg></div>
   <p class="coach-t" data-i18n="coachT"></p><p class="coach-c" data-i18n="coachClose"></p></div>
@@ -956,7 +962,8 @@ function openSheet(o){
   if (o && typeof onSheetOpen === 'function') onSheetOpen();
 }
 // 設定ボタンはつかんで動かせる。離すと、いちばん近い画面の角に吸い付く
-let corner = store.get('menuPos', 'tr'); if (!['tl', 'tr', 'bl', 'br'].includes(corner)) corner = 'tr';
+let corner = store.get('menuPos', 'br'); if (!['tl', 'tr', 'bl', 'br'].includes(corner)) corner = 'br';
+if (window.__arNativeApp) corner = 'tr';   // アプリの設定ボタンは右上に固定なので、場所・日付の配置もそれに合わせる
 elMenu.dataset.c = corner; document.body.dataset.gear = corner;
 // ホーム画面から開いたiPhoneでは、画面の端に固定した部品の「見た目」と「タップを受ける位置」がずれることがある。
 // そこで歯車への操作はボタン自身に頼らず、画面全体で指の位置を見て判定する（歯車のまわりを少し広めに取る）
