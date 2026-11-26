@@ -220,31 +220,40 @@ html.jl:lang(ja) .tabs small{font-weight:500}
 html.jl:lang(ja) .sheet .seg.thumbs button{font-weight:700}
 html.jl:lang(ja) .grp h3{font-weight:500}
 html.jl:lang(ja) .lab{font-weight:500}
-/* 最初の画面：カードをやめて全面のランディングに。上は紺、下は墨色へ抜けるグラデーションを映像の上に敷く */
+/* ショートクリップの誘導：初回（と、まだ撮っていない人には1日1回）のコーチマーク */
+.coach{position:fixed; inset:0; z-index:40; background:rgba(16,16,16,.72); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:0; animation:coachIn .35s ease}
+.coach[hidden]{display:none}
+body.coaching .card{visibility:hidden}
+.coach-ring{width:96px; height:96px; border-radius:50%; border:2px solid #fff; display:grid; place-items:center; animation:coachPress 1.6s ease-in-out infinite}
+.coach-ring svg{width:44px; height:44px}
+.coach-t{margin:22px 0 0; font-size:17px; line-height:1.6; white-space:pre-line}
+.coach-c{position:absolute; left:0; right:0; bottom:calc(env(safe-area-inset-bottom) + 28px); margin:0; font-size:13px; opacity:.7}
+@keyframes coachIn{from{opacity:0}}
+@keyframes coachPress{0%,100%{transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,.5)} 40%{transform:scale(.9)} 70%{box-shadow:0 0 0 22px rgba(255,255,255,0)}}
+/* 押した指の下に溜まるリング（満ちたら録画） */
+.pring{position:fixed; z-index:35; width:88px; height:88px; margin:-44px 0 0 -44px; pointer-events:none}
+.pring[hidden]{display:none}
+.pring svg{width:100%; height:100%; transform:rotate(-90deg)}
+.pring circle{fill:none; stroke-width:4}
+.pring .pr-t{stroke:rgba(255,255,255,.35)}
+.pring .pr-f{stroke:#fff; stroke-linecap:round; stroke-dasharray:214; stroke-dashoffset:214}
+.pring.go .pr-f{transition:stroke-dashoffset var(--d,300ms) linear; stroke-dashoffset:0}
+.pring.done .pr-f{stroke:#ff3b30; stroke-dashoffset:0}
+.pring.done{transition:opacity .25s ease .15s; opacity:0}
+/* 最初の画面：映画のポスター型。全体を薄く沈め、下は Safari のバーと同じ #101010 へ黒フェード。ロゴは左上に小さく、キャッチは下に大きく */
 #start{left:0; top:0; right:0; bottom:0; width:auto; transform:none; border:0; border-radius:0; box-shadow:none;
   -webkit-backdrop-filter:none; backdrop-filter:none;
-  background:linear-gradient(180deg, rgba(9,26,64,.94) 0%, rgba(13,40,92,.72) 26%, rgba(13,40,92,0) 46%, rgba(0,0,0,0) 62%, rgba(24,26,32,.88) 84%, rgba(24,26,32,.96) 100%);
-  display:flex; flex-direction:column; align-items:center; gap:0; text-align:center; overflow:auto;
-  padding:calc(env(safe-area-inset-top) + clamp(72px,14vh,128px)) max(24px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 20px) max(24px,env(safe-area-inset-left))}
-#start h2{font-family:var(--font-d); font-weight:500; font-size:clamp(34px,11vw,56px); letter-spacing:.16em; margin:0 0 0 .16em; line-height:1.1}
-#start .catch{font-family:var(--font-d); font-weight:800; font-size:clamp(24px,7.6vw,34px); letter-spacing:.04em; line-height:1.3; margin:22px 0 0}
-#start p[data-i18n="desc"]{margin-top:18px; font-size:min(14px,3.4vw); font-weight:600; opacity:.92}
-#start .go{margin-top:auto; padding-top:32px; width:min(400px,100%); display:flex; flex-direction:column; align-items:stretch; gap:18px}
-#start .primary{min-height:64px; border-radius:18px; font-size:20px; font-weight:800; letter-spacing:.06em; background:#fff; color:#14213d; border:0; box-shadow:0 8px 28px rgba(0,0,0,.35)}
-#start .alt{display:flex; justify-content:center; gap:8px}
-#start .alt button, #start .alt .btn{width:auto; flex:1 1 0; min-height:48px; background:transparent; border:0; box-shadow:none; color:#fff; font-size:min(16px,4.2vw); font-weight:700; padding:6px 4px; white-space:nowrap}
-#start .alt button:active, #start .alt .btn:active{background:rgba(255,255,255,.12)}
+  background:linear-gradient(180deg, rgba(16,16,16,.35) 0%, rgba(16,16,16,.12) 30%, rgba(16,16,16,.25) 48%, rgba(16,16,16,.86) 70%, #101010 86%);
+  display:flex; flex-direction:column; justify-content:flex-end; align-items:stretch; gap:0; text-align:left; overflow:auto;
+  padding:calc(env(safe-area-inset-top) + 24px) max(24px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 24px) max(24px,env(safe-area-inset-left))}
+#start h2{position:absolute; left:max(24px,env(safe-area-inset-left)); top:calc(env(safe-area-inset-top) + 30px); font-family:var(--font-d); font-weight:800; font-size:15px; letter-spacing:.24em; margin:0; line-height:1}
+#start .catch{font-family:var(--font-d); font-weight:800; font-size:clamp(34px,11vw,48px); line-height:1.18; letter-spacing:.02em; margin:0; max-width:6.6em; text-wrap:wrap; word-break:normal}
+#start p[data-i18n="desc"]{margin-top:14px; font-size:min(14px,3.5vw); font-weight:600; opacity:.88}
+#start .go{margin-top:36px; width:100%; max-width:460px; display:flex; flex-direction:column; align-items:stretch; gap:10px}
+#start .primary{min-height:58px; border-radius:18px; font-size:18px; font-weight:800; letter-spacing:.04em}
+#start .alt{display:flex; gap:10px}
+#start .alt button, #start .alt .btn{width:auto; flex:1 1 0; min-height:50px; font-size:min(15px,3.9vw); white-space:nowrap; padding:6px 8px}
 #start .err{color:#fff}
-#start .sdate{align-self:flex-end; margin-top:10px; font-family:var(--font-d); font-weight:600; font-size:13px; letter-spacing:.08em; opacity:.85}
-/* 日本語の組版（参考: qiita tofu_frontend「日本語フォント」記事）
-   - 和欧間のアキを自動で入れ、行頭などの約物のアキを詰める。小書きかな・長音を行頭に置かない
-   - 長い英単語や URL ははみ出さずに折る（break-all は日本語の禁則まで外すので使わない）
-   - 見出し・ボタンなど短い文だけ、文節で折って行の長さをそろえる。palt（字詰め）はキャッチだけ
-   - 時刻・入力欄は自動アキを切る（数字の並びとカーソル位置のため） */
-body{text-autospace:normal; text-spacing-trim:trim-start; line-break:strict; overflow-wrap:anywhere}
-.time, .ctime, .rec, input, select, textarea{text-autospace:no-autospace}
-h2, h3, .catch, .modal p, .start p, .note, .toast, .hint, button, label.btn, .lab{word-break:auto-phrase; text-wrap:balance}
-html:lang(ja) .catch{font-feature-settings:"palt"}
 </style>
 
 </head>
@@ -269,7 +278,6 @@ html:lang(ja) .catch{font-feature-settings:"palt"}
         <div class="alt"><label class="btn" for="file" data-i18n="pick"></label><button type="button" id="demoStart" data-i18n="demo"></button></div>
         <p class="err" id="msg" role="status"></p>
       </div>
-      <div class="sdate" id="startDate" aria-hidden="true"></div>
     </div>
     <div class="start" id="ask" hidden>
       <h2 data-i18n="askT"></h2>
@@ -307,6 +315,9 @@ html:lang(ja) .catch{font-feature-settings:"palt"}
 </div>
 <button type="button" id="menu" data-c="tr" data-i18n-label="settings" aria-expanded="false" aria-controls="sheet"><svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M19.15 10.08 L21.88 10.44 L21.88 13.56 L19.15 13.92 L18.41 15.70 L20.09 17.88 L17.88 20.09 L15.70 18.41 L13.92 19.15 L13.56 21.88 L10.44 21.88 L10.08 19.15 L8.30 18.41 L6.12 20.09 L3.91 17.88 L5.59 15.70 L4.85 13.92 L2.12 13.56 L2.12 10.44 L4.85 10.08 L5.59 8.30 L3.91 6.12 L6.12 3.91 L8.30 5.59 L10.08 4.85 L10.44 2.12 L13.56 2.12 L13.92 4.85 L15.70 5.59 L17.88 3.91 L20.09 6.12 L18.41 8.30Z M12 8.3a3.7 3.7 0 1 0 0 7.4a3.7 3.7 0 1 0 0-7.4Z"/></svg></button>
 <div class="toast" id="toast" role="status"></div>
+<div class="coach" id="coach" hidden><div class="coach-ring"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12m0-1.5v-2a1.5 1.5 0 0 1 3 0V12m0-1.5a1.5 1.5 0 0 1 3 0V12m0-.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-2 .2a6 6 0 0 1-5-2.7L4.4 17a1.5 1.5 0 0 1 2.4-1.8L8 16.5"/></svg></div>
+  <p class="coach-t" data-i18n="coachT"></p><p class="coach-c" data-i18n="coachClose"></p></div>
+<div class="pring" id="pring" hidden aria-hidden="true"><svg viewBox="0 0 80 80"><circle class="pr-t" cx="40" cy="40" r="34"/><circle class="pr-f" cx="40" cy="40" r="34"/></svg></div>
 <div class="rec" id="rec" hidden><i></i><span id="recT">REC 0:00</span></div>
 <div class="modal" id="clipAsk" hidden>
   <div class="start">
@@ -862,7 +873,7 @@ const I18N = {
     askT:'This plays sound', askD:'Play background music? You can change this any time in Settings.', yes:'Play', no:'Stay silent',
     settings:'Settings', close:'Close', flip:'Switch front / rear camera', gSound:'Sound', playOn:'▶ Play music', playOff:'■ Stop music', chime:'Time signal',
     gBase:'Base', color:'Color', mono:'Mono', monoTone:'Mono tone', light:'Light', dark:'Dark',
-    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'What to do with this clip?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipRetake:'Retake', clipRetakeHint:'Hold to record a new clip', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
+    gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'What to do with this clip?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipRetake:'Retake', coachT:'Press and hold the screen\nto record a short clip', coachClose:'Tap to close', clipRetakeHint:'Hold to record a new clip', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', clockFont:'Clock font', jaFont:'Japanese font', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
@@ -884,7 +895,7 @@ const I18N = {
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
-    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'このクリップをどうしますか？', clipAskD:'保存するのは、撮ったままの元のビデオです。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipRetake:'撮り直す', clipRetakeHint:'長押しで新しく録画できます', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
+    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'このクリップをどうしますか？', clipAskD:'保存するのは、撮ったままの元のビデオです。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipRetake:'撮り直す', coachT:'画面を長押しで\nショートクリップが撮れます', coachClose:'タップで閉じる', clipRetakeHint:'長押しで新しく録画できます', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', clockFont:'時計のフォント', jaFont:'日本語のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'効果', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
@@ -1067,6 +1078,7 @@ function startRun(sound){
   if (!running){ running = true; sceneT0 = performance.now() / 1000; }
   syncSrc();
   if (sound && !A.playing) play();   // まだ画面に触れていない場合は、次に触れた瞬間に鳴り始める
+  setTimeout(coachMaybe, 1500);
 }
 $('soundYes').addEventListener('click', () => { store.set('sound', '1'); state.chime = store.get('chime', '1') === '1'; syncUI(); startRun(true); });
 // 「流さない」は時報も含めて無音にする（時報の設定そのものは書き換えず、今回だけ切る。設定からいつでも入れられる）
@@ -1274,7 +1286,6 @@ $('punchAmt').value = punchAmt;
 $('punchAmt').addEventListener('input', () => { punchAmt = parseFloat($('punchAmt').value); store.set('punchAmt', String(punchAmt)); });
 $('fxPunch').addEventListener('click', () => { punchOn = !punchOn; store.set('punch', punchOn ? '1' : '0'); changed(false); });
 // 時計の見せ方：パネル（色の面に時刻）／抜き文字（大きな数字が窓になり、その中だけ映像が動く）
-{ const d = new Date(), z = n => String(n).padStart(2, '0'); $('startDate').textContent = d.getFullYear() + '.' + z(d.getMonth() + 1) + '.' + z(d.getDate()); }
 const CFONT = { archivo:"'Archivo',var(--font-j),sans-serif", urbanist:"'Urbanist',var(--font-j),sans-serif" };
 // 日本語のフォント（英字は Inter / Urbanist / Archivo のまま、かな漢字だけが切り替わる）
 const JFONT = { line:"'LINE Seed JP'", plex:"'IBM Plex Sans JP'" };
@@ -1820,6 +1831,7 @@ function clipDone(c){
   if (c.done) return; c.done = true;
   if (c.short){ say(tr('clipShort')); return; }
   if (c.discard || !c.chunks.length) return;
+  store.set('clipped', '1'); $('coach').hidden = true; document.body.classList.remove('coaching');
   const blob = new Blob(c.chunks, { type:c.mime.split(';')[0] });
   clipUrl = URL.createObjectURL(blob);
   const d = new Date(), z = n => String(n).padStart(2, '0');
@@ -1839,6 +1851,28 @@ function clipClose(){
   stopStream(); video.pause(); video.srcObject = null; pp.rev = false; src = { kind:'demo' }; syncSrc();
 }
 let clipDown = null;
+// 誘導：一度も撮ったことがない人にだけ、初回と、その後は1日1回コーチマークを出す
+function coachMaybe(){
+  if (!canClip || store.get('clipped', '') === '1') return;
+  const day = new Date().toDateString(); if (store.get('coachDay', '') === day) return;
+  if (!running || sheetOpen || away || rc || !$('clipAsk').hidden || !$('resume').hidden || !$('locAsk').hidden || !ask.hidden) return;
+  store.set('coachDay', day); $('coach').hidden = false; document.body.classList.add('coaching');
+}
+$('coach').addEventListener('pointerdown', ev => { ev.preventDefault(); ev.stopPropagation(); $('coach').hidden = true; document.body.classList.remove('coaching'); clipSupUntil = performance.now() + 500; });
+// 押した指の下のリング：触れてすぐは出さず（ただのタップでチラつかないように）、録画が始まる瞬間に満ちる
+const pring = $('pring'); let pringT = 0;
+function ringOn(x, y){
+  clearTimeout(pringT);
+  pringT = setTimeout(() => {
+    pring.className = 'pring'; pring.style.left = x + 'px'; pring.style.top = y + 'px'; pring.style.setProperty('--d', (CLIP_HOLD - 90) + 'ms'); pring.hidden = false;
+    void pring.offsetWidth; pring.classList.add('go');
+  }, 90);
+}
+function ringOff(done){
+  clearTimeout(pringT);
+  if (done && !pring.hidden){ pring.classList.add('done'); pringT = setTimeout(() => { pring.hidden = true; }, 450); }
+  else pring.hidden = true;
+}
 cv.addEventListener('pointerdown', ev => {
   if (!canClip || !ev.isPrimary || rc || clipDown) return;
   const playing = src.kind === 'file' && src.clip;
@@ -1847,11 +1881,12 @@ cv.addEventListener('pointerdown', ev => {
   if (!$('start').hidden || !$('ask').hidden || !$('resume').hidden || !$('locAsk').hidden) return;
   if (typeof audioLocked === 'function' && audioLocked()) return;
   const pid = ev.pointerId;
-  clipDown = { pid, save:playing, timer:setTimeout(() => { clipDown.on = true; if (clipDown.save){ clipHoldOn = true; clipHush(); try{ cv.setPointerCapture(pid); }catch(e){} } else clipStart(pid); }, CLIP_HOLD) };
+  ringOn(ev.clientX, ev.clientY);
+  clipDown = { pid, save:playing, timer:setTimeout(() => { clipDown.on = true; ringOff(true); if (clipDown.save){ clipHoldOn = true; clipHush(); try{ cv.setPointerCapture(pid); }catch(e){} } else clipStart(pid); }, CLIP_HOLD) };
 });
 function clipUp(ev){
   if (!clipDown || (ev && ev.pointerId !== clipDown.pid)) return;
-  const d = clipDown; clipDown = null; clearTimeout(d.timer);
+  const d = clipDown; clipDown = null; clearTimeout(d.timer); if (!d.on) ringOff(false);
   if (d.on){ clipSupUntil = performance.now() + 600; if (d.save){ clipHoldOn = false; $('clipAsk').hidden = false; } else clipEnd(false); }   // 離したときの click を、一時停止などに使わない
 }
 cv.addEventListener('pointerup', clipUp); cv.addEventListener('pointercancel', clipUp); cv.addEventListener('lostpointercapture', clipUp);
@@ -1882,7 +1917,7 @@ cv.addEventListener('webglcontextrestored', () => { initGL(); });
 // バックグラウンドに回ったら、カメラと音を止める。戻ってきたら「カメラ→音」の順に確認してから再開する
 const resumeBox = $('resume');
 function goAway(){
-  if (clipDown){ clearTimeout(clipDown.timer); clipDown = null; } clipHoldOn = false; clipEnd(true);
+  if (clipDown){ clearTimeout(clipDown.timer); clipDown = null; } clipHoldOn = false; clipEnd(true); ringOff(false);
   if (!running || away || hold) return;
   away = { cam:src.kind === 'camera', snd:A.playing };
   if (src.kind === 'camera'){ stopStream(); video.srcObject = null; }
