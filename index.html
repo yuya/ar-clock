@@ -111,7 +111,7 @@ body.native .hint{left:max(12px,var(--sl)); bottom:calc(var(--sb) + 70px)}
 #menu[data-c="br"]{bottom:calc(var(--sb) + 14px); right:max(12px,var(--sr))} #menu[data-c="bl"]{bottom:calc(var(--sb) + 14px); left:max(12px,var(--sl))}
 #menu{position:fixed; z-index:5; width:44px; height:44px; padding:0; touch-action:none; cursor:grab;
   min-height:44px; padding:8px 14px; font-family:var(--font-d); font-weight:800; font-size:12px; letter-spacing:.14em; transition:opacity .6s}
-.dim #menu, .dim #flip{opacity:.4}
+.dim #menu, .dim #flip{opacity:0; pointer-events:none}   /* 放っておくと設定ボタンは消える。画面のどこかに触れると戻る（その触れ方では開かない） */
 /* 前面・背面カメラの切り替え：左下 */
 #flip{position:fixed; z-index:5; left:max(12px,var(--sl)); bottom:calc(var(--sb) + 14px); width:44px; height:44px; padding:0; min-height:44px; touch-action:none; transition:opacity .6s; display:inline-flex; align-items:center; justify-content:center}
 body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
@@ -952,7 +952,9 @@ function syncUI(){
 let sheetOpen = false, dimTimer = null;
 // しばらく触れないと設定ボタンを薄くする（アプリの中では、アプリ側のボタンにも知らせる）
 const toNative = m => { if (window.__arNativeApp) try{ window.webkit.messageHandlers.ui.postMessage(m); }catch(e){} };
+let undimAt = -1e9;
 function wake(){
+  if (document.body.classList.contains('dim')) undimAt = performance.now();
   document.body.classList.remove('dim'); clearTimeout(dimTimer); toNative('wake');
   dimTimer = setTimeout(() => { if (!sheetOpen){ document.body.classList.add('dim'); toNative('dim'); } }, 5000);
 }
@@ -977,6 +979,7 @@ document.addEventListener('pointerdown', ev => {
   if (window.__arNativeApp) return;   // アプリの中では、設定はアプリ側の画面で開く
   if (sheetOpen || !ev.isPrimary || (ev.pointerType === 'mouse' && ev.button !== 0)) return;
   if (!$('start').hidden || !$('ask').hidden || !$('resume').hidden || !$('locAsk').hidden) return;   // 確認画面が出ている間は、そちらの操作を優先
+  if (document.body.classList.contains('dim')) return;   // 歯車が消えている間の最初のタップは、歯車を戻すだけ（開かない）
   if (!nearGear(ev.clientX, ev.clientY)) return;
   drag = { id:ev.pointerId, x:ev.clientX, y:ev.clientY, dx:0, dy:0, moved:false };
   ev.preventDefault(); ev.stopPropagation();
@@ -1006,6 +1009,8 @@ addEventListener('pointerup', dragEnd, true); addEventListener('pointercancel', 
 // 歯車の操作のあとに続いて届く click は、映像（一時停止）に渡さない
 // （歯車に重ねた触覚用のスイッチは例外：切り替わらせないとカチッが鳴らない）
 document.addEventListener('click', ev => {
+  // 消えていた歯車を呼び戻したタップの click は、歯車に届いても開かない
+  if (performance.now() - undimAt < 600 && elMenu.contains(ev.target)){ ev.preventDefault(); ev.stopPropagation(); return; }
   if (performance.now() - menuHandledAt >= 600) return;
   if (elMenu.contains(ev.target)){ if (gearOpenT) setTimeout(gearOpen, 0); return; }
   if (ev.target.closest && ev.target.closest('#flip')) return;
@@ -1914,8 +1919,7 @@ cv.addEventListener('click', () => {
   if (performance.now() < clipSupUntil){ if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; } return; }
   if (performance.now() - (A.unlockedAt || -1e9) < 700){ say(tr('audioBack')); return; }   // 止められていた音を戻すためのタップは、それだけに使う
   const inClip = src.kind === 'file' && src.clip;
-  if (inClip && !clipQuiet()){ tapTimer = null; clipClose(); return; }   // クリップ再生中は、パネル・抜き文字が出ていてもシングルタップで解除
-  if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; if (inClip) clipClose(); return; }   // ダブルタップは、いつでも解除
+  if (tapTimer){ clearTimeout(tapTimer); tapTimer = null; if (inClip) clipClose(); return; }   // クリップの解除はダブルタップだけ（シングルタップは設定ボタンを呼び戻すのに使う）
   { const v = pv(); if (v && v.paused && !pp.rev && !held()) v.play().catch(() => {}); }   // 映像が止まっていたら、このタップの中で動かし直す
   tapTimer = setTimeout(() => { tapTimer = null; }, 270);
 });
