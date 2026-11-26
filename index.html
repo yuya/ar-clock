@@ -129,7 +129,7 @@ body[data-gear="bl"] #flip{left:calc(max(12px,var(--sl)) + 54px)}
   padding:10px max(16px,var(--sr)) 10px max(16px,var(--sl)); border-bottom:2px solid var(--ink)}
 .sheet-head h2{margin:0; font-family:var(--font-d); font-weight:800; font-size:14px; letter-spacing:.16em}
 .sheet-body{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:18px;
-  padding:16px max(16px,var(--sr)) calc(max(16px,var(--sb)) + 28px) max(16px,var(--sl))}
+  padding:16px max(16px,var(--sr)) calc(max(16px,var(--sb)) + 72px) max(16px,var(--sl))}
 .grp{display:flex; flex-direction:column; gap:8px; min-width:0}
 .sheet-body > .grp:not(.tabon){display:none}
 .sheet-body{touch-action:pan-y; overscroll-behavior:contain}
@@ -260,6 +260,14 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
 #start .alt{display:flex; gap:10px}
 #start .alt button, #start .alt .btn{width:auto; flex:1 1 0; min-height:50px; font-size:min(15px,3.9vw); white-space:nowrap; padding:6px 8px}
 #start .err{color:#fff}
+/* 項目がひとつだけのタブは見出しを出さない */
+.grp.solo > h3{display:none}
+/* 選べないタブ（白黒２色・携帯ゲーム機のときのフィルタ） */
+.sheet .tabs button[aria-disabled="true"]{opacity:.3; pointer-events:none}
+/* 縦に溢れているとき、続きがあることを上下のフェードで知らせる */
+.sheet-body.fb{-webkit-mask-image:linear-gradient(#000 calc(100% - 56px),transparent); mask-image:linear-gradient(#000 calc(100% - 56px),transparent)}
+.sheet-body.ft{-webkit-mask-image:linear-gradient(transparent,#000 40px); mask-image:linear-gradient(transparent,#000 40px)}
+.sheet-body.ft.fb{-webkit-mask-image:linear-gradient(transparent,#000 40px,#000 calc(100% - 56px),transparent); mask-image:linear-gradient(transparent,#000 40px,#000 calc(100% - 56px),transparent)}
 </style>
 
 </head>
@@ -386,10 +394,8 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
         <button type="button" id="look-manga" data-v="manga" data-i18n="manga"></button>
         <button type="button" id="look-pop" data-v="pop" data-i18n="pop"></button>
         <button type="button" id="look-mini" data-v="mini" data-i18n="mini"></button>
-        <button type="button" id="look-fish" data-v="fish" data-i18n="fish"></button>
         <button type="button" id="look-thermal" data-v="thermal" data-i18n="thermal"></button>
         <button type="button" id="look-crt" data-v="crt" data-i18n="crt"></button>
-        <button type="button" id="look-edge" data-v="edge" data-i18n="edge"></button>
         <button type="button" id="look-lidar" data-v="lidar" data-i18n="lidar"></button>
       </div>
       <div class="opt" id="optLookK"><div class="opt-in">
@@ -408,6 +414,7 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
         <button type="button" id="fxVig" aria-pressed="false"></button>
         <button type="button" id="fxOld" aria-pressed="false"></button>
         <button type="button" id="fxPunch" aria-pressed="false"></button>
+        <button type="button" id="fxFish" aria-pressed="false"></button>
       </div>
       <div class="opt" id="optGlitch"><div class="opt-in">
         <label class="lab" for="glitchAmt" data-i18n="glitchAmt"></label>
@@ -425,7 +432,10 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
         <label class="lab" for="punchAmt" data-i18n="punchAmt"></label>
         <div class="slide"><span data-i18n="weak"></span><input type="range" id="punchAmt" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
       </div></div>
-      <p class="note" data-i18n="fxNote"></p>
+      <div class="opt" id="optFish"><div class="opt-in">
+        <label class="lab" for="fishAmt" data-i18n="fishAmt"></label>
+        <div class="slide"><span data-i18n="weak"></span><input type="range" id="fishAmt" min="0" max="1" step="0.1"><span data-i18n="strong"></span></div>
+      </div></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gMode"></h3>
@@ -441,10 +451,6 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
         <button type="button" id="locRevoke" data-i18n="locRevoke" hidden></button>
       </div>
       <p class="note" id="locStatus"></p>
-      <div class="fsel"><label for="clockFont" data-i18n="clockFont"></label>
-        <select id="clockFont"><option value="archivo">Archivo</option><option value="urbanist">Urbanist</option></select></div>
-      <div class="fsel"><label for="jaFont" data-i18n="jaFont"></label>
-        <select id="jaFont"><option value="line">LINE Seed JP</option><option value="plex">IBM Plex Sans JP</option></select></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gSrc"></h3>
@@ -883,7 +889,7 @@ const I18N = {
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', clockFont:'Clock font', jaFont:'Japanese font', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
     gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
-    locGetting:'Getting your location…', locOk:'Showing ', locErrPerm:'The browser blocked location for this page. Allow it in the browser or OS settings.', locErrPos:'Couldn’t get your position.', locErrLookup:'Got your position, but couldn’t look up the place name.', oldAmt:'Dust and scratches', weak:'Weak', amt:'Strength', reset:'Reset', sepia:'Sepia', strong:'Strong', fxNote:'Double-tap the picture to glitch it. A single tap freezes it.',
+    locGetting:'Getting your location…', locOk:'Showing ', locErrPerm:'The browser blocked location for this page. Allow it in the browser or OS settings.', locErrPos:'Couldn’t get your position.', locErrLookup:'Got your position, but couldn’t look up the place name.', oldAmt:'Dust and scratches', weak:'Weak', amt:'Strength', reset:'Reset', sepia:'Sepia', strong:'Strong', fish:'Fisheye', fishAmt:'Fisheye strength',
     gSrc:'Picture', camBack:'Rear camera', camFront:'Front camera',
     gStyle:'Sound style', piano:'Piano', electro:'Electro', musicbox:'Music box', birds:'Birdsong', chip:'8-bit', lofi:'Lo-fi', whistle:'Whistle', forest:'Crickets', marimba:'Marimba',
     gMood:'Time of day', auto:'Auto', morning:'Morning', day:'Day', evening:'Evening', night:'Night', moodNote:'Auto is brighter and faster in the morning, slower and softer at night.',
@@ -901,11 +907,11 @@ const I18N = {
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
-    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'このクリップをどうしますか？', clipAskD:'保存するのは、撮ったままの元のビデオです。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipRetake:'撮り直す', coachT:'画面を長押しで\nショートクリップが撮れます', coachClose:'タップで閉じる', clipRetakeHint:'長押しで新しく録画できます', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒2色', gb:'携帯ゲーム機',
+    gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'このクリップをどうしますか？', clipAskD:'保存するのは、撮ったままの元のビデオです。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipRetake:'撮り直す', coachT:'画面を長押しで\nショートクリップが撮れます', coachClose:'タップで閉じる', clipRetakeHint:'長押しで新しく録画できます', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒２色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', clockFont:'時計のフォント', jaFont:'日本語のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
     gFx:'効果', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
-    locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', amt:'強さ', reset:'リセット', sepia:'セピア', strong:'強', fxNote:'映像を2回タップすると、その場でグリッチが走ります。1回タップは一時停止です。',
+    locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', amt:'強さ', reset:'リセット', sepia:'セピア', strong:'強', fishAmt:'魚眼の強さ',
     gSrc:'映像', camBack:'外側カメラ', camFront:'内側カメラ',
     gStyle:'音色', piano:'ピアノ', electro:'エレクトロ', musicbox:'オルゴール', birds:'鳥のさえずり', chip:'8bit', lofi:'ローファイ', whistle:'口笛', forest:'虫の声', marimba:'マリンバ',
     gMood:'時間帯', auto:'自動', morning:'朝', day:'昼', evening:'夕', night:'夜', moodNote:'自動にすると、朝は速く明るく、夜は遅くやわらかく変わります。',
@@ -1072,9 +1078,11 @@ let facing = store.get('facing', 'environment') === 'user' ? 'user' : 'environme
 // 見た目は3つの組み合わせ：ベース（カラー/モノクロ）× フィルタ × グリッチ。以前の単一フィルタ設定は読み替える
 const OLD = { manga:['mono', 'manga', '0'], both:['mono', 'manga', '1'], glitch:['mono', 'none', '1'], mono:['mono', 'none', '0'], pop:['color', 'pop', '0'], film:['color', 'film', '0'], none:['color', 'none', '0'] }[store.get('fx', '')] || ['color', 'none', '1'];   // 初めての人は、フィルタなしのカラーから
 let base = ['color', 'mono', 'sepia', 'bit', 'gb'].includes(store.get('base', OLD[0])) ? store.get('base', OLD[0]) : 'mono', look = store.get('look', OLD[1]), glitchOn = store.get('glitch', OLD[2]) === '1';
-if (!['none', 'film', 'vivid', 'manga', 'pop', 'mini', 'fish', 'thermal', 'crt', 'edge', 'lidar', 'bit', 'gb'].includes(look)) look = 'none';
+// 魚眼はフィルタから効果へ引っ越し（ほかのフィルタと重ねられる）。エッジは廃止
+if (look === 'fish'){ look = 'none'; store.set('look', look); store.set('fish', '1'); }
+if (!['none', 'film', 'vivid', 'manga', 'pop', 'mini', 'thermal', 'crt', 'lidar', 'bit', 'gb'].includes(look)) look = 'none';
 if (look === 'bit' || look === 'gb'){ base = look; look = 'none'; store.set('base', base); store.set('look', look); }   // 以前はフィルタだった2つは、ベースへ引っ越し
-const NO_LOOK_ON_BIT = ['film', 'vivid', 'manga', 'pop', 'thermal', 'crt', 'edge', 'lidar'];
+const NO_LOOK_ON_BIT = ['film', 'vivid', 'manga', 'pop', 'mini', 'thermal', 'crt', 'lidar'];   // 白黒２色・携帯ゲーム機にはフィルタを重ねない（フィルタのタブごと選べなくする）
 if ((base === 'bit' || base === 'gb') && NO_LOOK_ON_BIT.includes(look)) look = 'none';
 
 // サンプル映像：同じ場所に置いた動画（sample.mp4）。ページを開いた瞬間から読み込みと再生を始める
@@ -1225,7 +1233,7 @@ function setFrozen(f){
 const toast = $('toast');
 let toastTimer = null;
 function changed(pulse){
-  say([tr(base), look === 'none' ? '' : tr(look), glitchOn ? tr('glitch') : '', vigOn ? tr('vig') : '', oldOn ? tr('old') : '', punchOn ? tr('punch') : ''].filter(Boolean).join(' × '));
+  say([tr(base), look === 'none' ? '' : tr(look), glitchOn ? tr('glitch') : '', vigOn ? tr('vig') : '', oldOn ? tr('old') : '', punchOn ? tr('punch') : '', fishOn ? tr('fish') : ''].filter(Boolean).join(' × '));
   if (pulse && !reduce) tap = .7;
   syncSrc();
 }
@@ -1297,17 +1305,20 @@ let punchOn = store.get('punch', '0') === '1', punchAmt = parseFloat(store.get('
 $('punchAmt').value = punchAmt;
 $('punchAmt').addEventListener('input', () => { punchAmt = parseFloat($('punchAmt').value); store.set('punchAmt', String(punchAmt)); });
 $('fxPunch').addEventListener('click', () => { punchOn = !punchOn; store.set('punch', punchOn ? '1' : '0'); changed(false); });
+// 魚眼：中心を大きく、周辺を強く縮める（強さは真ん中が標準、右半分は誇張）
+let fishOn = store.get('fish', '0') === '1', fishK = parseFloat(store.get('fishK', '1')); if (isNaN(fishK)) fishK = 1; fishK = Math.min(1.6, Math.max(0, fishK));
+$('fishAmt').value = K2S(fishK);
+$('fishAmt').addEventListener('input', () => { fishK = S2K(parseFloat($('fishAmt').value)); store.set('fishK', String(fishK)); });
+$('fxFish').addEventListener('click', () => { fishOn = !fishOn; store.set('fish', fishOn ? '1' : '0'); changed(false); });
 // 時計の見せ方：パネル（色の面に時刻）／抜き文字（大きな数字が窓になり、その中だけ映像が動く）
 const CFONT = { archivo:"'Archivo',var(--font-j),sans-serif", urbanist:"'Urbanist',var(--font-j),sans-serif" };
 // 日本語のフォント（英字は Inter / Urbanist / Archivo のまま、かな漢字だけが切り替わる）
 const JFONT = { line:"'LINE Seed JP'", plex:"'IBM Plex Sans JP'" };
-let jaFont = JFONT[store.get('jfont', 'line')] ? store.get('jfont', 'line') : 'line';
+let jaFont = 'line';   // 日本語は LINE Seed JP に固定（選ぶ UI はやめた）
 const applyJa = () => { document.documentElement.style.setProperty('--font-j', JFONT[jaFont]); document.documentElement.classList.toggle('jl', jaFont === 'line'); const s = $('jaFont'); if (s) s.value = jaFont; };
-$('jaFont').addEventListener('change', e => { jaFont = JFONT[e.target.value] ? e.target.value : 'line'; store.set('jfont', jaFont); applyJa(); });
 applyJa();
-let clockFont = CFONT[store.get('cfont', 'archivo')] ? store.get('cfont', 'archivo') : 'archivo';
+let clockFont = 'archivo';   // 時計の数字は Archivo に固定（選ぶ UI はやめた）
 const applyFont = () => { document.body.style.setProperty('--font-t', CFONT[clockFont]); const s = $('clockFont'); if (s) s.value = clockFont; };
-$('clockFont').addEventListener('change', e => { clockFont = CFONT[e.target.value] ? e.target.value : 'archivo'; store.set('cfont', clockFont); applyFont(); });
 applyFont();
 let clockMode = store.get('mode', 'panel') === 'cutout' ? 'cutout' : 'panel';
 $('segMode').addEventListener('click', ev => {
@@ -1364,6 +1375,9 @@ function syncSrc(){
   $('fxPix').setAttribute('aria-pressed', pixOn ? 'true' : 'false'); $('fxPix').textContent = tr('pix');
   opt('optMono', base === 'mono'); opt('optBaseK', base !== 'color'); opt('optLookK', look !== 'none'); $('baseK').value = K2S(kOf(baseKs, base)); $('lookK').value = K2S(kOf(lookKs, look)); paintSliders(); opt('optBit', base === 'bit' || base === 'gb'); opt('optLine', look === 'manga' || look === 'pop'); opt('optGlitch', glitchOn); opt('optVig', vigOn); opt('optOld', oldOn); opt('optPunch', punchOn);
   $('fxPunch').setAttribute('aria-pressed', punchOn ? 'true' : 'false'); $('fxPunch').textContent = tr('punch');
+  $('fxFish').setAttribute('aria-pressed', fishOn ? 'true' : 'false'); $('fxFish').textContent = tr('fish'); opt('optFish', fishOn);
+  const noLook = base === 'bit' || base === 'gb', tl = document.querySelector('#tabs [data-tab=look]');
+  if (tl){ tl.setAttribute('aria-disabled', noLook ? 'true' : 'false'); if (noLook && tab === 'look') showTab('base'); }
   document.body.classList.toggle('k-knock', clockMode === 'cutout');
   document.querySelectorAll('#segMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === clockMode ? 'true' : 'false'));
 }
@@ -1409,7 +1423,7 @@ void main(){
 }`;
 const FS_F = PREC + COVER + `
 uniform sampler2D u_fx; uniform vec2 u_res;
-uniform float u_bk,u_lkk,u_sep;
+uniform float u_bk,u_lkk,u_sep,u_fish;
 uniform float u_t,u_dpr,u_mono,u_look,u_glitch,u_burst,u_lines,u_grain,u_gamma,u_gamt,u_vig,u_old,u_zoom,u_bit,u_bitk,u_pix;
 uniform vec3 u_paper,u_ink,u_p0,u_p1,u_p2,u_p3;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -1433,10 +1447,10 @@ void main(){
   vec2 uv=gl_FragCoord.xy/u_res, px=gl_FragCoord.xy/u_dpr, uv0=uv;
   uv=(uv-.5)/(1.+u_zoom)+.5;
   float lk=u_look, vig=0.;
-  if(lk>5.5&&lk<6.5){
-    // 魚眼：中心を大きく、周辺を強く縮める。あとはフィルタなしと同じに描く
+  if(u_fish>0.){
+    // 魚眼（効果）：中心を大きく、周辺を強く縮める。フィルタはこのあと普通にかかる
     vec2 p=(uv-.5)*vec2(u_asp,1.); float rm=length(vec2(u_asp,1.))*.5, rn=length(p)/rm;
-    p*=mix(1.,.5+.5*rn*rn,u_lkk); uv=p/vec2(u_asp,1.)+.5; lk=0.; vig=smoothstep(.72,1.06,rn)*.9*u_lkk;
+    p*=mix(1.,.5+.5*rn*rn,u_fish); uv=p/vec2(u_asp,1.)+.5; vig=smoothstep(.72,1.06,rn)*.9*min(u_fish,1.);
   }
   float g=u_glitch, b=u_burst, tt=floor(u_t*14.);
   if(g>0.){
@@ -1644,7 +1658,7 @@ function initGL(){
     const S = ['u_tex', 'u_src', 'u_asp', 'u_mirror'];
     PH = mkProg(FS_H, S.concat(['u_wres']));
     PV = mkProg(FS_V, ['u_a', 'u_wres']);
-    PF = mkProg(FS_F, S.concat(['u_fx', 'u_res', 'u_t', 'u_dpr', 'u_mono', 'u_look', 'u_glitch', 'u_burst', 'u_lines', 'u_grain', 'u_gamma', 'u_gamt', 'u_vig', 'u_old', 'u_zoom', 'u_bit', 'u_bitk', 'u_bk', 'u_lkk', 'u_sep', 'u_pix', 'u_paper', 'u_ink', 'u_p0', 'u_p1', 'u_p2', 'u_p3']));
+    PF = mkProg(FS_F, S.concat(['u_fx', 'u_res', 'u_t', 'u_dpr', 'u_mono', 'u_look', 'u_glitch', 'u_burst', 'u_lines', 'u_grain', 'u_gamma', 'u_gamt', 'u_vig', 'u_old', 'u_zoom', 'u_bit', 'u_bitk', 'u_bk', 'u_lkk', 'u_sep', 'u_fish', 'u_pix', 'u_paper', 'u_ink', 'u_p0', 'u_p1', 'u_p2', 'u_p3']));
     const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
@@ -1698,6 +1712,7 @@ function render(now){
   gl.uniform1f(u.u_gamma, Math.pow(2, (monoTone - .5) * 2.6)); gl.uniform1f(u.u_gamt, glitchAmt); gl.uniform1f(u.u_vig, running && vigOn ? .25 + .75 * vigAmt : 0); gl.uniform1f(u.u_zoom, zoom); gl.uniform1f(u.u_bit, base === 'bit' ? 1 : base === 'gb' ? 2 : 0); gl.uniform1f(u.u_bitk, bitAmt); gl.uniform1f(u.u_pix, pixOn ? 1 : 0); gl.uniform1f(u.u_old, running && oldOn && !reduce ? .15 + .85 * oldAmt : 0);
   gl.uniform1f(u.u_grain, look === 'film' ? .085 : look === 'vivid' ? .012 : look === 'mini' || base === 'bit' || base === 'gb' ? 0 : look === 'none' || look === 'fish' ? (mono ? .04 : 0) : ['thermal', 'crt', 'edge', 'lidar'].includes(look) ? 0 : look === 'manga' && !mono ? .02 : .03);
   const bk = thumbT || base === 'color' ? 1 : kOf(baseKs, base), lkk = thumbT || look === 'none' ? 1 : kOf(lookKs, look);
+  gl.uniform1f(u.u_fish, !thumbT && fishOn ? fishK : 0);
   gl.uniform1f(u.u_bk, bk); gl.uniform1f(u.u_lkk, lkk); gl.uniform1f(u.u_sep, base === 'sepia' ? 1 : 0);
   if (look === 'film' || look === 'vivid') gl.uniform1f(u.u_grain, (look === 'film' ? .085 : .012) * lkk);
   else if (base === 'sepia' && (look === 'none' || look === 'fish')) gl.uniform1f(u.u_grain, .035 * bk);
@@ -2066,7 +2081,7 @@ function autoResume(){
 // ── 設定：タブと、ベース／フィルタのサムネイル
 // サムネイルは通信なし。設定を開いたとき（とタブを替えたとき）、いま映っている1コマに、各ベース・フィルタを1つずつ端末のGPUでかけて作る（1フレームに1枚）
 // スライダー：「弱 → 強」の目安は見出しの右へ移し、空いたバーの右端にリセット（初期値に戻す）を載せる
-const SLIDE_DEF = { baseK:.5, lookK:.5, bitAmt:.5, monoTone:.5, lineW:.5, glitchAmt:.5, vigAmt:.5, oldAmt:.5, punchAmt:.5 };
+const SLIDE_DEF = { baseK:.5, lookK:.5, bitAmt:.5, monoTone:.5, lineW:.5, glitchAmt:.5, vigAmt:.5, oldAmt:.5, punchAmt:.5, fishAmt:.5 };
 document.querySelectorAll('.sheet .slide').forEach(sl => {
   const inp = sl.querySelector('input[type=range]'); if (!inp || !(inp.id in SLIDE_DEF)) return;
   const lab = sl.closest('.opt-in') && sl.closest('.opt-in').querySelector('label.lab[for="' + inp.id + '"]');
@@ -2109,14 +2124,21 @@ function showTab(t){
   tab = t; store.set('tab', t);
   document.querySelectorAll('.sheet-body > .grp').forEach(g => g.classList.toggle('tabon', g.dataset.tab === t));
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t ? 'true' : 'false'));
-  document.querySelector('.sheet-body').scrollTop = 0; queueThumbs();
+  document.querySelector('.sheet-body').scrollTop = 0; queueThumbs(); if (typeof edgeFade === 'function') requestAnimationFrame(edgeFade);
 }
 function onSheetOpen(){ queueThumbs(); }
 function updTabs(){ paintSliders(); }
 // つまみの左側を塗る（範囲スライダーの見た目をそろえるため、自前で描いている）
 function paintSliders(){ document.querySelectorAll('.sheet input[type=range]').forEach(i => i.style.setProperty('--p', ((i.value - i.min) / ((i.max - i.min) || 1) * 100) + '%')); }
 document.addEventListener('input', e => { if (e.target.matches && e.target.matches('.sheet input[type=range]')) paintSliders(); });
-document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { if (b.getAttribute('aria-disabled') !== 'true') showTab(b.dataset.tab); }));
+{ const cnt = {}; document.querySelectorAll('.sheet-body > .grp').forEach(g => { cnt[g.dataset.tab] = (cnt[g.dataset.tab] || 0) + 1; });
+  document.querySelectorAll('.sheet-body > .grp').forEach(g => g.classList.toggle('solo', cnt[g.dataset.tab] === 1)); }
+// 縦に溢れているときのフェード（上に戻れるとき・下に続きがあるとき）
+const sbody = document.querySelector('.sheet-body');
+function edgeFade(){ const t = sbody.scrollTop, m = sbody.scrollHeight - sbody.clientHeight; sbody.classList.toggle('ft', t > 2); sbody.classList.toggle('fb', m - t > 2); }
+sbody.addEventListener('scroll', edgeFade, { passive:true }); addEventListener('resize', edgeFade);
+new ResizeObserver(edgeFade).observe(sbody); if (sbody.firstElementChild) new MutationObserver(edgeFade).observe(sbody, { subtree:true, attributes:true, attributeFilter:['class', 'hidden'] });
 showTab(tab);
 syncUI(); syncSrc(); wake(); tickClock();
 demoPlay();
