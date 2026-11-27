@@ -2065,12 +2065,12 @@ function hapticCover(){
   });
 }
 // アプリの中のスライダー：1段動くたびにアプリ側の振動を頼む（ブラウザでは、ドラッグ中に端末を鳴らす手段がない）
-function tick(kind){ if (window.__arNativeApp) try{ window.webkit.messageHandlers.haptic.postMessage(kind || 'soft'); }catch(e){} }
+function hapticTick(kind){ if (window.__arNativeApp) try{ window.webkit.messageHandlers.haptic.postMessage(kind || 'soft'); }catch(e){} }
 // スライダー：1段動くたびにカチッ
 const slideLast = new WeakMap();
 document.addEventListener('input', e => {
   const i = e.target; if (!i.matches || !i.matches('.sheet input[type=range]')) return;
-  if (slideLast.get(i) !== i.value){ slideLast.set(i, i.value); if (e.isTrusted) tick('soft'); }
+  if (slideLast.get(i) !== i.value){ slideLast.set(i, i.value); if (e.isTrusted) hapticTick('soft'); }
 }, true);
 document.addEventListener('pointerdown', e => { const i = e.target.closest && e.target.closest('.sheet input[type=range]'); if (i) slideLast.set(i, i.value); }, true);
 if (IOS_WEB){
