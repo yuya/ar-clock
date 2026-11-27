@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="AR CLOCK">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://ar-clock.com/">
-<meta property="og:image" content="https://ar-clock.com/og.png">
+<meta property="og:image" content="https://ar-clock.com/og.png?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -264,7 +264,7 @@ body.coaching .card{visibility:hidden}
   padding:calc(env(safe-area-inset-top) + 24px) max(24px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 24px) max(24px,env(safe-area-inset-left))}
 #start h2{position:absolute; left:max(24px,env(safe-area-inset-left)); top:calc(env(safe-area-inset-top) + 30px); font-family:var(--font-d); font-weight:800; font-size:15px; letter-spacing:.24em; margin:0; line-height:1}
 #start .catch{font-family:var(--font-d); font-weight:800; font-size:clamp(30px,9vw,44px); line-height:1.18; letter-spacing:.02em; margin:0; text-wrap:wrap; word-break:normal}
-html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw - 48px) / 10.2))}
+html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw - 48px) / 11.2))}
 #start p[data-i18n="desc"]{margin-top:14px; font-size:min(14px,3.5vw); font-weight:600; opacity:.88}
 #start .go{margin-top:36px; width:100%; max-width:460px; display:flex; flex-direction:column; align-items:stretch; gap:10px}
 #start .primary{min-height:58px; border-radius:18px; font-size:18px; font-weight:800; letter-spacing:.04em}
@@ -279,6 +279,10 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
 .sheet-body.fb{-webkit-mask-image:linear-gradient(#000 calc(100% - 56px),transparent); mask-image:linear-gradient(#000 calc(100% - 56px),transparent)}
 .sheet-body.ft{-webkit-mask-image:linear-gradient(transparent,#000 40px); mask-image:linear-gradient(transparent,#000 40px)}
 .sheet-body.ft.fb{-webkit-mask-image:linear-gradient(transparent,#000 40px,#000 calc(100% - 56px),transparent); mask-image:linear-gradient(transparent,#000 40px,#000 calc(100% - 56px),transparent)}
+.ptxt{display:flex; flex-direction:column; gap:6px; margin-top:4px}
+.ptxt label{font-size:13px; opacity:.8}
+.ptxt input{min-height:44px; padding:8px 14px; font:inherit; font-size:16px; font-weight:700; letter-spacing:.06em; color:var(--on); background:var(--glass-2); border:1px solid var(--glass-line); border-radius:16px; -webkit-appearance:none; appearance:none}
+.ptxt input::placeholder{color:rgba(255,255,255,.45); font-weight:500; letter-spacing:0}
 </style>
 
 </head>
@@ -450,9 +454,10 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
     </div>
     <div class="grp">
       <h3 data-i18n="gMode"></h3>
-      <div class="seg two" id="segMode">
+      <div class="seg" id="segMode">
         <button type="button" data-v="panel" data-i18n="panel"></button>
         <button type="button" data-v="cutout" data-i18n="cutout"></button>
+        <button type="button" data-v="glass" data-i18n="glass"></button>
       </div>
     </div>
     <div class="grp">
@@ -462,6 +467,8 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
         <button type="button" id="locRevoke" data-i18n="locRevoke" hidden></button>
       </div>
       <p class="note" id="locStatus"></p>
+      <div class="ptxt"><label for="placeTxt" data-i18n="placeTxt"></label>
+        <input type="text" id="placeTxt" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" data-i18n-ph="placeTxtPh"></div>
     </div>
     <div class="grp">
       <h3 data-i18n="gSrc"></h3>
@@ -899,7 +906,7 @@ const I18N = {
     gLook:'Filter', none:'None', film:'Film', vivid:'Vivid', manga:'Manga', pop:'Pop art', mini:'Miniature', recHint:'Hold to record', clipOff:'Clip off', clipAskT:'What to do with this clip?', clipAskD:'Saves the original footage as shot. Filters, beat punch and the clock are not included.', clipSave:'Save', clipRetake:'Retake', coachT:'Press and hold the screen\nto record a short clip', coachClose:'Tap to close', clipRetakeHint:'Hold to record a new clip', clipCancel:'Cancel', bitAmt:'Dither strength', bitLo:'Flat', bitHi:'Strong', clipFail:"Couldn't record", clipShort:'Too short', tabSrc:'Source', tabBase:'Base', tabLook:'Filter', tabFx:'Effects', tabView:'Display', tabSound:'Sound', fish:'Fisheye', thermal:'Thermal', crt:'CRT', edge:'Edge', lidar:'LiDAR', pix:'Pixelate', bit:'B&W (2-tone)', gb:'Handheld game',
     lineW:'Line weight', thin:'Thin', thick:'Thick',
     gView:'Display', clockFont:'Clock font', jaFont:'Japanese font', labels:'Place & date', locNote:'Turning this on asks for your location. In Japan the coordinates go to the Geospatial Information Authority to look up the prefecture; elsewhere, rounded coordinates go to BigDataCloud to look up the country. If you decline, only the date is shown.',
-    gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', cutout:'Cut-out digits', sampleSrc:'Sample video',
+    gFx:'Effect', glitch:'Glitch', glitchAmt:'Glitch strength', vig:'Vignette', vigAmt:'Vignette strength', old:'Old film', punch:'Beat punch', punchAmt:'Punch strength', gMode:'Clock style', panel:'Panel', glass:'Glass', placeTxt:'Place label (up to 16 characters)', placeTxtPh:'Blank = your location', cutout:'Cut-out digits', sampleSrc:'Sample video',
     locGetting:'Getting your location…', locOk:'Showing ', locErrPerm:'The browser blocked location for this page. Allow it in the browser or OS settings.', locErrPos:'Couldn’t get your position.', locErrLookup:'Got your position, but couldn’t look up the place name.', oldAmt:'Dust and scratches', weak:'Weak', amt:'Strength', reset:'Reset', sepia:'Sepia', strong:'Strong', fish:'Fisheye', fishAmt:'Fisheye strength',
     gSrc:'Picture', camBack:'Rear camera', camFront:'Front camera',
     gStyle:'Sound style', piano:'Piano', electro:'Electro', musicbox:'Music box', birds:'Birdsong', chip:'8-bit', lofi:'Lo-fi', whistle:'Whistle', forest:'Crickets', marimba:'Marimba',
@@ -914,14 +921,14 @@ const I18N = {
     paused:'Paused', resumed:'Resumed', audioBack:'Sound resumed', hintAudio:'Tap to resume sound', hintPaused:'Paused · tap to resume', canvas:'Camera picture with filter'
   },
   ja: {
-    catch:'重ねる 時を 景色に', desc:'レンズ越しの世界に、今を重ねる時計です。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
+    catch:'重ねる いまを 景色に', desc:'レンズ越しの世界に、今を重ねる時計です。', cam:'カメラを起動', pick:'写真・動画を選ぶ', demo:'サンプル映像で見る',
     askT:'音が鳴ります', askD:'BGMを流しますか。あとから「設定」でいつでも変えられます。', yes:'流す', no:'流さない',
     settings:'設定', close:'閉じる', flip:'前面・背面カメラを切り替え', gSound:'音', playOn:'▶ 音を鳴らす', playOff:'■ 音を止める', chime:'時報',
     gBase:'ベース', color:'カラー', mono:'モノクロ', monoTone:'モノクロの濃淡', light:'淡', dark:'濃',
     gLook:'フィルタ', none:'なし', film:'フィルム調', vivid:'ビビッド', manga:'マンガ', pop:'ポップアート', mini:'ミニチュア', recHint:'長押しして録画', clipOff:'クリップを解除しました', clipAskT:'このクリップをどうしますか？', clipAskD:'保存するのは、撮ったままの元のビデオです。フィルタ、ビートパンチ、時計はかかっていません。', clipSave:'保存', clipRetake:'撮り直す', coachT:'画面を長押しで\nショートクリップが撮れます', coachClose:'タップで閉じる', clipRetakeHint:'長押しで新しく録画できます', clipCancel:'キャンセル', bitAmt:'あみ点の強さ', bitLo:'なし', bitHi:'強い', clipFail:'録画できませんでした', clipShort:'短すぎました', tabSrc:'映像', tabBase:'ベース', tabLook:'フィルタ', tabFx:'効果', tabView:'表示', tabSound:'音', fish:'魚眼', thermal:'サーマル', crt:'CRT', edge:'エッジ', lidar:'点群', pix:'ピクセル化', bit:'白黒２色', gb:'携帯ゲーム機',
     lineW:'線の太さ', thin:'細', thick:'太',
     gView:'表示', clockFont:'時計のフォント', jaFont:'日本語のフォント', labels:'場所と日付', locNote:'オンにすると現在地の許可を求めます。日本国内では都道府県を調べるために座標を国土地理院へ、海外では国名を調べるために丸めた座標を BigDataCloud へ送ります。許可しない場合は日付だけを表示します。',
-    gFx:'効果', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', cutout:'抜き文字', sampleSrc:'サンプル映像',
+    gFx:'効果', glitch:'グリッチ', glitchAmt:'グリッチの強さ', vig:'周辺減光', vigAmt:'周辺減光の強さ', old:'古いフィルム', punch:'ビートパンチ', punchAmt:'パンチの強さ', gMode:'時計の表示', panel:'パネル', glass:'ガラス', placeTxt:'場所の表示（16文字まで）', placeTxtPh:'空欄なら現在地', cutout:'抜き文字', sampleSrc:'サンプル映像',
     locGetting:'現在地を取得中…', locOk:'表示中：', locErrPerm:'ブラウザがこのページの現在地利用を止めています。ブラウザか端末の設定で許可してください。', locErrPos:'現在地を取得できませんでした。', locErrLookup:'現在地は取れましたが、地名を調べられませんでした。', oldAmt:'ゴミとキズの量', weak:'弱', amt:'強さ', reset:'リセット', sepia:'セピア', strong:'強', fishAmt:'魚眼の強さ',
     gSrc:'映像', camBack:'外側カメラ', camFront:'内側カメラ',
     gStyle:'音色', piano:'ピアノ', electro:'エレクトロ', musicbox:'オルゴール', birds:'鳥のさえずり', chip:'8bit', lofi:'ローファイ', whistle:'口笛', forest:'虫の声', marimba:'マリンバ',
@@ -944,6 +951,7 @@ function applyLang(){
   document.documentElement.lang = LANG;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-label]').forEach(el => { el.setAttribute('aria-label', tr(el.dataset.i18nLabel)); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = tr(el.dataset.i18nPh); });
   document.querySelectorAll('#segLang button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === LANG ? 'true' : 'false'));
 }
 // 都道府県（国土地理院の市区町村コードの先頭2桁＝都道府県コード 01〜47 の順）。表示は言語に関わらずローマ字
@@ -1254,7 +1262,9 @@ $('fxGlitch').addEventListener('click', () => { glitchOn = !glitchOn; store.set(
 
 // 場所と日付の表示（既定は非表示）。場所は現在地から都道府県を調べる。許可されなければ場所は出さない
 let labelsOn = store.get('labels', '0') === '1', placeName = '';
-const placeText = () => placeName;
+// 場所の表示は任意の文字に置き換えられる（空欄なら現在地）
+let placeCustom = (store.get('placeTxt', '') || '').slice(0, 16);
+const placeText = () => placeCustom || placeName;
 let locState = '';
 const setPlace = (n, st) => { placeName = (n || '').toUpperCase(); locState = st !== undefined ? st : placeName ? 'ok' : ''; lastMin = -1; syncSrc(); };
 // 日本の外では国名を出す。国を調べるだけなので、座標は約1km単位に丸めてから BigDataCloud に送る
@@ -1331,10 +1341,10 @@ applyJa();
 let clockFont = 'archivo';   // 時計の数字は Archivo に固定（選ぶ UI はやめた）
 const applyFont = () => { document.body.style.setProperty('--font-t', CFONT[clockFont]); const s = $('clockFont'); if (s) s.value = clockFont; };
 applyFont();
-let clockMode = store.get('mode', 'panel') === 'cutout' ? 'cutout' : 'panel';
+let clockMode = ['cutout', 'glass'].includes(store.get('mode', 'panel')) ? store.get('mode', 'panel') : 'panel';
 $('segMode').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
-  clockMode = b.dataset.v === 'cutout' ? 'cutout' : 'panel'; store.set('mode', clockMode); cardsOff(); syncSrc();
+  clockMode = ['cutout', 'glass'].includes(b.dataset.v) ? b.dataset.v : 'panel'; store.set('mode', clockMode); cardsOff(); glassDirty = true; syncSrc();
 });
 // パネルの色：白と、時間帯ごとの1色（深夜は紺、朝は緑〜黄緑、昼は黄〜橙、夕方は赤〜桃、夜は紫）
 const ACC = ['#2a1fb0', '#2a1fb0', '#2a1fb0', '#2a1fb0', '#0b7fd0', '#0b7fd0', '#00a3a0', '#00a95f', '#00a95f', '#8fb400', '#8fb400', '#e0a800', '#e0a800', '#f28c00', '#f28c00', '#ee5a00', '#e60012', '#e60012', '#e4007f', '#e4007f', '#8a2be2', '#8a2be2', '#4b2bd0', '#4b2bd0'];
@@ -1360,6 +1370,9 @@ $('baseK').addEventListener('input', () => { baseKs[base] = S2K(parseFloat($('ba
 $('lookK').addEventListener('input', () => { lookKs[look] = S2K(parseFloat($('lookK').value)); store.set('lookK', JSON.stringify(lookKs)); });
 $('bitAmt').addEventListener('input', () => { bitAmt = toV(parseFloat($('bitAmt').value), .75); store.set('bitAmt', String(bitAmt)); });
 $('monoTone').addEventListener('input', () => { monoTone = parseFloat($('monoTone').value); store.set('monoTone', String(monoTone)); });
+$('placeTxt').value = placeCustom;
+$('placeTxt').addEventListener('input', () => { placeCustom = $('placeTxt').value.trim().slice(0, 16); store.set('placeTxt', placeCustom); lastMin = -1; syncSrc(); });
+$('placeTxt').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
 // 言語の切り替え
 $('segLang').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
@@ -1431,6 +1444,30 @@ void main(){
   }
   a/=wa; b/=wb;
   gl_FragColor=vec4(clamp(.5+(a-b)*12.,0.,1.),b,a,1.);
+}`;
+// ガラスの文字盤：映像の上に、時刻の形をしたガラスを置く。文字の中は奥の映像が屈折して少し明るく、縁に光が走る
+const FS_G = PREC + `
+uniform sampler2D u_scene,u_gm; uniform vec2 u_res;
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_res;
+  vec3 sc=texture2D(u_scene,uv).rgb;
+  float b=texture2D(u_gm,uv,4.).a;
+  if(b<.002){gl_FragColor=vec4(sc,1.);return;}
+  float m=texture2D(u_gm,uv).a;
+  vec2 e=vec2(7.)/u_res;
+  float gx=texture2D(u_gm,uv+vec2(e.x,0.),4.).a-texture2D(u_gm,uv-vec2(e.x,0.),4.).a;
+  float gy=texture2D(u_gm,uv+vec2(0.,e.y),4.).a-texture2D(u_gm,uv-vec2(0.,e.y),4.).a;
+  vec2 n=vec2(gx,gy);
+  vec2 ruv=uv-n*vec2(.05,.05*u_res.x/u_res.y);
+  vec2 f=vec2(2.5)/u_res;
+  vec3 g=(texture2D(u_scene,ruv).rgb*2.+texture2D(u_scene,ruv+vec2(f.x,f.y)).rgb+texture2D(u_scene,ruv-vec2(f.x,f.y)).rgb+texture2D(u_scene,ruv+vec2(f.x,-f.y)).rgb+texture2D(u_scene,ruv-vec2(f.x,-f.y)).rgb)/6.;
+  g=mix(g,vec3(1.),.14)*1.06;
+  float ed=clamp(length(n)*3.,0.,1.);
+  vec2 nn=n/(length(n)+1e-4);
+  float sp=pow(max(dot(nn,normalize(vec2(.7,-.7))),0.),2.)*ed, sp2=pow(max(dot(nn,normalize(vec2(-.7,.7))),0.),3.)*ed;
+  g+=sp*.5+sp2*.18+ed*.05;
+  float sh=b*(1.-m)*.32;
+  gl_FragColor=vec4(mix(sc*(1.-sh),clamp(g,0.,1.),smoothstep(.3,.7,m)),1.);
 }`;
 const FS_F = PREC + COVER + `
 uniform sampler2D u_fx; uniform vec2 u_res;
@@ -1646,6 +1683,7 @@ const LOOK_ID = { none:0, manga:1, film:2, pop:3, vivid:4, mini:5, fish:6, therm
 let lineW = Math.min(1, Math.max(0, parseFloat(store.get('lineW', '0.5')) || 0));
 $('lineW').value = lineW;
 $('lineW').addEventListener('input', () => { lineW = parseFloat($('lineW').value); store.set('lineW', String(lineW)); });
+let PG = null, tS = null, gmTex = null, sw = 0, sh = 0;
 let gl = null, PH = null, PV = null, PF = null, tex = null, tA = null, tB = null, W = 0, H = 0, dpr = 1, srcW = 640, srcH = 360, ww = 0, wh = 0;
 function mkProg(fs, names){
   const sh = (type, s) => { const o = gl.createShader(type); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
@@ -1674,6 +1712,11 @@ function initGL(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     tex = mkTex(gl.LINEAR); tA = mkTarget(gl.NEAREST); tB = mkTarget(gl.LINEAR);
+    PG = mkProg(FS_G, ['u_scene', 'u_gm', 'u_res']); tS = mkTarget(gl.LINEAR); sw = sh = 0;
+    gmTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, gmTex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    glassDirty = true;
     ww = wh = 0; stillDirty = true;
     return true;
   }catch(e){ console.error(e); gl = null; return false; }
@@ -1714,7 +1757,9 @@ function render(now){
   }
   // グリッチは「入」なら常時、「切」でも映像をタップした瞬間だけ走る
   const glitch = glitchOn || tap > .03, u = PF.u, mono = base === 'mono', P = mono ? GREYS : PALS[pal % PALS.length];
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(PF.p);
+  const glass = running && !thumbT && clockMode === 'glass' && !clipQuiet();
+  if (glass && (sw !== cv.width || sh !== cv.height)){ sw = cv.width; sh = cv.height; gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sw, sh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); gl.bindTexture(gl.TEXTURE_2D, tex); }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, glass ? tS.f : null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(PF.p);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tB.t); gl.uniform1i(u.u_fx, 1); gl.activeTexture(gl.TEXTURE0);
   srcU(u); gl.uniform2f(u.u_res, cv.width, cv.height); gl.uniform1f(u.u_t, now % 600); gl.uniform1f(u.u_dpr, dpr);
   gl.uniform1f(u.u_mono, mono ? 1 : 0); gl.uniform1f(u.u_look, LOOK_ID[look] || 0); gl.uniform1f(u.u_glitch, glitch ? 1 : 0);
@@ -1731,7 +1776,33 @@ function render(now){
   gl.uniform3fv(u.u_p0, P[0]); gl.uniform3fv(u.u_p1, P[1]); gl.uniform3fv(u.u_p2, P[2]); gl.uniform3fv(u.u_p3, P[3]);
   if (thumbT){ gl.uniform1f(u.u_glitch, 0); gl.uniform1f(u.u_burst, 0); gl.uniform1f(u.u_vig, 0); gl.uniform1f(u.u_old, 0); gl.uniform1f(u.u_zoom, 0); }   // サムネイルには、エフェクトをかけない
   gl.drawArrays(gl.TRIANGLES, 0, 6);
+  if (glass){
+    if (glassDirty) drawGlassMask();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.useProgram(PG.p);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex); gl.uniform1i(PG.u.u_gm, 2);
+    gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.uniform1i(PG.u.u_scene, 3);
+    gl.uniform2f(PG.u.u_res, cv.width, cv.height); gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.activeTexture(gl.TEXTURE0);
+  }
 }
+// ガラスの時刻の形（白＝ガラス）。画面全体を 1024×1024 に縮めて描き、ぼかしはミップマップで作る（縁の向きを出すのに使う）
+const gmCv = document.createElement('canvas'); gmCv.width = gmCv.height = 1024;
+function drawGlassMask(){
+  glassDirty = false;
+  const c = gmCv.getContext('2d'), d = new Date(), t = p2(d.getHours()) + ':' + p2(d.getMinutes());
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 1024, 1024);
+  c.setTransform(1024 / W, 0, 0, 1024 / H, 0, 0);
+  const fam = getComputedStyle(document.body).getPropertyValue('--font-t') || "'Archivo',sans-serif";
+  c.font = '800 100px ' + fam; const w100 = c.measureText(t).width || 300;
+  const fs = Math.min(W * .86 / w100 * 100, H * .26);
+  c.font = '800 ' + fs + 'px ' + fam; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff';
+  c.fillText(t, W / 2, H * .3);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gmCv); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.generateMipmap(gl.TEXTURE_2D); gl.activeTexture(gl.TEXTURE0);
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { glassDirty = true; });
+addEventListener('resize', () => { glassDirty = true; });
 
 /* ───────────── 進行：映像10秒 → 時刻カード → 映像 ───────────── */
 const SC_LEN = 10, CARD_LEN = 4, WIPE = .55;
@@ -1776,12 +1847,13 @@ function cardsOff(){ cards.forEach(el => clip(el, HIDE.l, false)); cardOn = fals
 let holdTimer = null;
 let sceneT0 = 0, cardOn = false, burst = 0, tap = 0, pal = 0, lines = 0, lastT = 0, hold = false;
 const p2 = n => (n < 10 ? '0' : '') + n, WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-let lastSec = -1, lastMin = -1, lastHour = -1;
+let lastSec = -1, lastMin = -1, lastHour = -1, glassMin = -1, glassDirty = true;
 function tickClock(){
   const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
   lastSec = s; const m = d.getMinutes(), h = d.getHours();
   // 0秒の長い音のときはカードを出さず、1〜6秒に毎秒1枚ずつ。7秒になった瞬間に映像へ戻り、次の1秒まで映像
-  if (running && !hold && !away && !clipQuiet()){
+  if (m !== glassMin){ glassMin = m; glassDirty = true; }
+  if (running && !hold && !away && !clipQuiet() && clockMode !== 'glass'){
     const k = s % 10;
     if (k >= 1 && k <= 6){
       cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s));
