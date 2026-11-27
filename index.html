@@ -1453,30 +1453,23 @@ void main(){
   a/=wa; b/=wb;
   gl_FragColor=vec4(clamp(.5+(a-b)*12.,0.,1.),b,a,1.);
 }`;
-// ガラスの文字盤：映像の上に、時刻の形をしたガラスを置く。文字の中は奥の映像が屈折して少し明るく、縁に光が走る
+// ガラス（曇りガラス）：画面全体が曇っていて、時刻の形だけ指で拭いたように澄んで見える。
+// 札が出る（拭く）たびに澄み、札が引っ込むと数秒かけてまた曇る
 const FS_G = PREC + `
-uniform sampler2D u_scene,u_gm; uniform vec2 u_res;
+uniform sampler2D u_scene,u_gm; uniform vec2 u_res; uniform float u_ga;
 void main(){
   vec2 uv=gl_FragCoord.xy/u_res;
   vec3 sc=texture2D(u_scene,uv).rgb;
-  float b=texture2D(u_gm,uv,4.).a;
-  if(b<.002){gl_FragColor=vec4(sc,1.);return;}
-  float m=texture2D(u_gm,uv).a;
-  vec2 e=vec2(7.)/u_res;
-  float gx=texture2D(u_gm,uv+vec2(e.x,0.),4.).a-texture2D(u_gm,uv-vec2(e.x,0.),4.).a;
-  float gy=texture2D(u_gm,uv+vec2(0.,e.y),4.).a-texture2D(u_gm,uv-vec2(0.,e.y),4.).a;
-  vec2 n=vec2(gx,gy);
-  vec2 ruv=uv-n*vec2(.018,.018*u_res.x/u_res.y);
-  vec2 f=vec2(6.)/u_res, f2=vec2(4.2,0.)/u_res, f3=vec2(0.,4.2)/u_res;
-  vec3 g=(texture2D(u_scene,ruv).rgb*2.+texture2D(u_scene,ruv+f).rgb+texture2D(u_scene,ruv-f).rgb+texture2D(u_scene,ruv+vec2(f.x,-f.y)).rgb+texture2D(u_scene,ruv-vec2(f.x,-f.y)).rgb
-    +texture2D(u_scene,ruv+f2).rgb+texture2D(u_scene,ruv-f2).rgb+texture2D(u_scene,ruv+f3).rgb+texture2D(u_scene,ruv-f3).rgb)/10.;
-  g=mix(g,vec3(1.),.24)*1.06;   // すりガラスのように少しぼかして白く明るく（文字の塊として読めるように）
-  float ed=clamp(length(n)*3.,0.,1.);
-  vec2 nn=n/(length(n)+1e-4);
-  float sp=pow(max(dot(nn,normalize(vec2(.7,-.7))),0.),2.)*ed, sp2=pow(max(dot(nn,normalize(vec2(-.7,.7))),0.),3.)*ed;
-  g+=sp*.2+sp2*.06+ed*.025;   // 縁の光は控えめに（立体に見せすぎない）
-  float sh=b*(1.-m)*.1;
-  gl_FragColor=vec4(mix(sc*(1.-sh),clamp(g,0.,1.),smoothstep(.3,.7,m)),1.);
+  float k=u_res.y/900.;
+  vec2 r1=vec2(12.*k)/u_res, r2=r1*.5;
+  vec3 fg=sc*.16;
+  for(int i=0;i<8;i++){ float a=float(i)*.785398; vec2 d=vec2(cos(a),sin(a)); fg+=texture2D(u_scene,uv+d*r1).rgb*.07+texture2D(u_scene,uv+d.yx*r2).rgb*.035; }
+  float l=dot(fg,vec3(.299,.587,.114));
+  fg=mix(fg,vec3(l),.3); fg=mix(fg,vec3(.9,.93,.95),.34);
+  float m=texture2D(u_gm,uv,1.).a*u_ga, b=texture2D(u_gm,uv,4.).a*u_ga;
+  float c=smoothstep(.12,.88,m);
+  float wet=clamp(b*(1.-c)*1.4,0.,1.);   // 拭いた跡の縁だけ、うっすら濡れて明るい
+  gl_FragColor=vec4(mix(fg,sc,c)+wet*.05,1.);
 }`;
 const FS_F = PREC + COVER + `
 uniform sampler2D u_fx; uniform vec2 u_res;
@@ -1721,7 +1714,7 @@ function initGL(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     tex = mkTex(gl.LINEAR); tA = mkTarget(gl.NEAREST); tB = mkTarget(gl.LINEAR);
-    PG = mkProg(FS_G, ['u_scene', 'u_gm', 'u_res']); tS = mkTarget(gl.LINEAR); sw = sh = 0;
+    PG = mkProg(FS_G, ['u_scene', 'u_gm', 'u_res', 'u_ga']); tS = mkTarget(gl.LINEAR); sw = sh = 0;
     gmTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, gmTex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -1766,7 +1759,7 @@ function render(now){
   }
   // グリッチは「入」なら常時、「切」でも映像をタップした瞬間だけ走る
   const glitch = glitchOn || tap > .03, u = PF.u, mono = base === 'mono', P = mono ? GREYS : PALS[pal % PALS.length];
-  const glass = running && !thumbT && clockMode === 'glass';
+  const glass = running && !thumbT && clockMode === 'glass' && !clipQuiet();
   if (glass && (sw !== cv.width || sh !== cv.height)){ sw = cv.width; sh = cv.height; gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sw, sh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); gl.bindTexture(gl.TEXTURE_2D, tex); }
   gl.bindFramebuffer(gl.FRAMEBUFFER, glass ? tS.f : null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(PF.p);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tB.t); gl.uniform1i(u.u_fx, 1); gl.activeTexture(gl.TEXTURE0);
@@ -1790,7 +1783,7 @@ function render(now){
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.useProgram(PG.p);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex); gl.uniform1i(PG.u.u_gm, 2);
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.uniform1i(PG.u.u_scene, 3);
-    gl.uniform2f(PG.u.u_res, cv.width, cv.height); gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.uniform2f(PG.u.u_res, cv.width, cv.height); gl.uniform1f(PG.u.u_ga, glassA(now)); gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.activeTexture(gl.TEXTURE0);
   }
 }
@@ -1798,7 +1791,10 @@ function render(now){
 // 画面全体を 1024×1024 に縮めて描き、ぼかしはミップマップで作る（縁の向きを出すのに使う）。形が変わったコマだけ描き直す
 const gmCv = document.createElement('canvas'); gmCv.width = gmCv.height = 1024;
 let gmKey = '';
+let gaHideAt = -1;
+function glassA(now){ if (cardOn){ gaHideAt = -1; return 1; } if (gaHideAt < 0) gaHideAt = now; return Math.max(0, 1 - (now - gaHideAt) / 2400); }   // 引っ込んでから約2.4秒でまた曇る（次に拭くまで一瞬だけ曇りきる）
 function drawGlassMask(){
+  if (!cardOn && !glassDirty) return;   // 札が引っ込む動きは写さない（拭いた跡はそのまま、曇りが戻るだけ）
   const parts = [];
   if (!document.body.classList.contains('coaching')) cards.forEach(el => {
     const cs = getComputedStyle(el), cp = cs.clipPath || cs.webkitClipPath || '';
