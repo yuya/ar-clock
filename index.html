@@ -97,6 +97,8 @@ body.k-knock .card.tw{display:flex; background:#101010; color:#000; mix-blend-mo
 body.k-knock .card.tw.inv{display:none}
 body.k-knock .time{white-space:pre-line; font-size:min(47vw,30vh); line-height:.84; letter-spacing:-.02em; font-weight:900}
 body.k-knock .sub{display:none}
+/* ガラス：抜き文字とまったく同じ札（書体・大きさ・出入り・脈打ち）を見えないまま動かし、その形を WebGL がガラスとして描く */
+body.k-glass .card{opacity:0 !important}
 .time.tk{animation:tk .22s cubic-bezier(.2,.9,.2,1)}
 @keyframes tk{from{transform:scale(.965)}to{transform:none}}
 .seg.grid2{display:grid; grid-template-columns:1fr 1fr}
@@ -281,7 +283,7 @@ html:lang(ja) #start .catch{white-space:nowrap; font-size:min(44px,calc((100vw -
 .sheet-body.ft.fb{-webkit-mask-image:linear-gradient(transparent,#000 40px,#000 calc(100% - 56px),transparent); mask-image:linear-gradient(transparent,#000 40px,#000 calc(100% - 56px),transparent)}
 .ptxt{display:flex; flex-direction:column; gap:6px; margin-top:4px}
 .ptxt label{font-size:13px; opacity:.8}
-.ptxt input{min-height:44px; padding:8px 14px; font:inherit; font-size:16px; font-weight:700; letter-spacing:.06em; color:var(--on); background:var(--glass-2); border:1px solid var(--glass-line); border-radius:16px; -webkit-appearance:none; appearance:none}
+.ptxt input{text-transform:uppercase; min-height:44px; padding:8px 14px; font:inherit; font-size:16px; font-weight:700; letter-spacing:.06em; color:var(--on); background:var(--glass-2); border:1px solid var(--glass-line); border-radius:16px; -webkit-appearance:none; appearance:none}
 .ptxt input::placeholder{color:rgba(255,255,255,.45); font-weight:500; letter-spacing:0}
 </style>
 
@@ -1263,7 +1265,7 @@ $('fxGlitch').addEventListener('click', () => { glitchOn = !glitchOn; store.set(
 // 場所と日付の表示（既定は非表示）。場所は現在地から都道府県を調べる。許可されなければ場所は出さない
 let labelsOn = store.get('labels', '0') === '1', placeName = '';
 // 場所の表示は任意の文字に置き換えられる（空欄なら現在地）
-let placeCustom = (store.get('placeTxt', '') || '').slice(0, 16);
+let placeCustom = (store.get('placeTxt', '') || '').toUpperCase().slice(0, 16);
 const placeText = () => placeCustom || placeName;
 let locState = '';
 const setPlace = (n, st) => { placeName = (n || '').toUpperCase(); locState = st !== undefined ? st : placeName ? 'ok' : ''; lastMin = -1; syncSrc(); };
@@ -1371,7 +1373,7 @@ $('lookK').addEventListener('input', () => { lookKs[look] = S2K(parseFloat($('lo
 $('bitAmt').addEventListener('input', () => { bitAmt = toV(parseFloat($('bitAmt').value), .75); store.set('bitAmt', String(bitAmt)); });
 $('monoTone').addEventListener('input', () => { monoTone = parseFloat($('monoTone').value); store.set('monoTone', String(monoTone)); });
 $('placeTxt').value = placeCustom;
-$('placeTxt').addEventListener('input', () => { placeCustom = $('placeTxt').value.trim().slice(0, 16); store.set('placeTxt', placeCustom); lastMin = -1; syncSrc(); });
+$('placeTxt').addEventListener('input', () => { placeCustom = $('placeTxt').value.trim().toUpperCase().slice(0, 16); store.set('placeTxt', placeCustom); lastMin = -1; syncSrc(); });
 $('placeTxt').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
 // 言語の切り替え
 $('segLang').addEventListener('click', ev => {
@@ -1402,7 +1404,7 @@ function syncSrc(){
   $('fxFish').setAttribute('aria-pressed', fishOn ? 'true' : 'false'); $('fxFish').textContent = tr('fish'); opt('optFish', fishOn);
   const noLook = base === 'bit' || base === 'gb', tl = document.querySelector('#tabs [data-tab=look]');
   if (tl){ tl.setAttribute('aria-disabled', noLook ? 'true' : 'false'); if (noLook && tab === 'look') showTab('base'); }
-  document.body.classList.toggle('k-knock', clockMode === 'cutout');
+  document.body.classList.toggle('k-knock', clockMode === 'cutout' || clockMode === 'glass'); document.body.classList.toggle('k-glass', clockMode === 'glass');
   document.querySelectorAll('#segMode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === clockMode ? 'true' : 'false'));
 }
 
@@ -1459,9 +1461,10 @@ void main(){
   float gy=texture2D(u_gm,uv+vec2(0.,e.y),4.).a-texture2D(u_gm,uv-vec2(0.,e.y),4.).a;
   vec2 n=vec2(gx,gy);
   vec2 ruv=uv-n*vec2(.05,.05*u_res.x/u_res.y);
-  vec2 f=vec2(2.5)/u_res;
-  vec3 g=(texture2D(u_scene,ruv).rgb*2.+texture2D(u_scene,ruv+vec2(f.x,f.y)).rgb+texture2D(u_scene,ruv-vec2(f.x,f.y)).rgb+texture2D(u_scene,ruv+vec2(f.x,-f.y)).rgb+texture2D(u_scene,ruv-vec2(f.x,-f.y)).rgb)/6.;
-  g=mix(g,vec3(1.),.14)*1.06;
+  vec2 f=vec2(6.)/u_res, f2=vec2(4.2,0.)/u_res, f3=vec2(0.,4.2)/u_res;
+  vec3 g=(texture2D(u_scene,ruv).rgb*2.+texture2D(u_scene,ruv+f).rgb+texture2D(u_scene,ruv-f).rgb+texture2D(u_scene,ruv+vec2(f.x,-f.y)).rgb+texture2D(u_scene,ruv-vec2(f.x,-f.y)).rgb
+    +texture2D(u_scene,ruv+f2).rgb+texture2D(u_scene,ruv-f2).rgb+texture2D(u_scene,ruv+f3).rgb+texture2D(u_scene,ruv-f3).rgb)/10.;
+  g=mix(g,vec3(1.),.24)*1.06;   // すりガラスのように少しぼかして白く明るく（文字の塊として読めるように）
   float ed=clamp(length(n)*3.,0.,1.);
   vec2 nn=n/(length(n)+1e-4);
   float sp=pow(max(dot(nn,normalize(vec2(.7,-.7))),0.),2.)*ed, sp2=pow(max(dot(nn,normalize(vec2(-.7,.7))),0.),3.)*ed;
@@ -1757,7 +1760,7 @@ function render(now){
   }
   // グリッチは「入」なら常時、「切」でも映像をタップした瞬間だけ走る
   const glitch = glitchOn || tap > .03, u = PF.u, mono = base === 'mono', P = mono ? GREYS : PALS[pal % PALS.length];
-  const glass = running && !thumbT && clockMode === 'glass' && !clipQuiet();
+  const glass = running && !thumbT && clockMode === 'glass';
   if (glass && (sw !== cv.width || sh !== cv.height)){ sw = cv.width; sh = cv.height; gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sw, sh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null); gl.bindTexture(gl.TEXTURE_2D, tex); }
   gl.bindFramebuffer(gl.FRAMEBUFFER, glass ? tS.f : null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(PF.p);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tB.t); gl.uniform1i(u.u_fx, 1); gl.activeTexture(gl.TEXTURE0);
@@ -1777,7 +1780,7 @@ function render(now){
   if (thumbT){ gl.uniform1f(u.u_glitch, 0); gl.uniform1f(u.u_burst, 0); gl.uniform1f(u.u_vig, 0); gl.uniform1f(u.u_old, 0); gl.uniform1f(u.u_zoom, 0); }   // サムネイルには、エフェクトをかけない
   gl.drawArrays(gl.TRIANGLES, 0, 6);
   if (glass){
-    if (glassDirty) drawGlassMask();
+    drawGlassMask();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.useProgram(PG.p);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex); gl.uniform1i(PG.u.u_gm, 2);
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.uniform1i(PG.u.u_scene, 3);
@@ -1785,18 +1788,39 @@ function render(now){
     gl.activeTexture(gl.TEXTURE0);
   }
 }
-// ガラスの時刻の形（白＝ガラス）。画面全体を 1024×1024 に縮めて描き、ぼかしはミップマップで作る（縁の向きを出すのに使う）
+// ガラスの時刻の形（白＝ガラス）。見えない抜き文字の札から、文字・書体・大きさ・脈打ち・出入りの切り抜きをそのまま写す。
+// 画面全体を 1024×1024 に縮めて描き、ぼかしはミップマップで作る（縁の向きを出すのに使う）。形が変わったコマだけ描き直す
 const gmCv = document.createElement('canvas'); gmCv.width = gmCv.height = 1024;
+let gmKey = '';
 function drawGlassMask(){
-  glassDirty = false;
-  const c = gmCv.getContext('2d'), d = new Date(), t = p2(d.getHours()) + ':' + p2(d.getMinutes());
+  const parts = [];
+  if (!document.body.classList.contains('coaching')) cards.forEach(el => {
+    const cs = getComputedStyle(el), cp = cs.clipPath || cs.webkitClipPath || '';
+    const m = cp.match(/inset\(([^)]*)\)/); if (!m) return;
+    const tk = m[1].trim().split(/\s+/), [t, r = t, bt = t, l = r] = tk, px = (x, tot) => parseFloat(x) * (x.endsWith('%') ? tot / 100 : 1);
+    const ct = px(t, H), cr = px(r, W), cb = px(bt, H), cl = px(l, W);
+    if (W - cl - cr < 1 || H - ct - cb < 1) return;
+    const tm = el.querySelector('.ctime'), ts = getComputedStyle(tm), rc = tm.getBoundingClientRect();
+    const mt = ts.transform && ts.transform !== 'none' ? ts.transform.match(/matrix\(([^,]+)/) : null, sc = mt ? parseFloat(mt[1]) : 1;
+    parts.push({ cl, ct, cw:W - cl - cr, ch:H - ct - cb, text:tm.textContent, fs:parseFloat(ts.fontSize), lh:parseFloat(ts.lineHeight) || parseFloat(ts.fontSize) * .84,
+      font:ts.fontWeight + ' ' + ts.fontSize + ' ' + ts.fontFamily, ls:ts.letterSpacing, cx:rc.left + rc.width / 2, cy:rc.top + rc.height / 2, sc, z:+el.style.zIndex || 0 });
+  });
+  parts.sort((a, b) => a.z - b.z);
+  const key = W + 'x' + H + JSON.stringify(parts.map(p => [Math.round(p.cl), Math.round(p.ct), Math.round(p.cw), Math.round(p.ch), p.text, p.font, p.sc.toFixed(3), Math.round(p.cx), Math.round(p.cy)]));
+  if (key === gmKey && !glassDirty) return;
+  gmKey = key; glassDirty = false;
+  const c = gmCv.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 1024, 1024);
-  c.setTransform(1024 / W, 0, 0, 1024 / H, 0, 0);
-  const fam = getComputedStyle(document.body).getPropertyValue('--font-t') || "'Archivo',sans-serif";
-  c.font = '800 100px ' + fam; const w100 = c.measureText(t).width || 300;
-  const fs = Math.min(W * .86 / w100 * 100, H * .26);
-  c.font = '800 ' + fs + 'px ' + fam; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff';
-  c.fillText(t, W / 2, H * .3);
+  parts.forEach(p => {
+    c.setTransform(1024 / W, 0, 0, 1024 / H, 0, 0);
+    c.save(); c.beginPath(); c.rect(p.cl, p.ct, p.cw, p.ch); c.clip();
+    c.translate(p.cx, p.cy); c.scale(p.sc, p.sc);
+    c.font = p.font; if ('letterSpacing' in c) c.letterSpacing = p.ls === 'normal' ? '0px' : p.ls;
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff';
+    const lines = p.text.split('\n'), y0 = -(lines.length - 1) * p.lh / 2;
+    lines.forEach((ln, i) => c.fillText(ln, 0, y0 + i * p.lh));
+    c.restore();
+  });
   gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gmCv); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
   gl.generateMipmap(gl.TEXTURE_2D); gl.activeTexture(gl.TEXTURE0);
@@ -1827,8 +1851,8 @@ function clip(el, v, anim){
   el.style.webkitClipPath = v; el.style.clipPath = v; twSync(el);
 }
 function cardIn(text){
-  if (clockMode === 'cutout'){
-    // 抜き文字：カードは10秒に1枚だけ。毎秒、数字だけがカチッと替わる
+  if (clockMode === 'cutout' || clockMode === 'glass'){
+    // 抜き文字（ガラスも同じ動き）：カードは10秒に1枚だけ。毎秒、数字だけがカチッと替わる
     text = text.replace(/ /g, '\n');
     if (cardOn){ const tm = cards[top].querySelector('.ctime'); tm.textContent = text; if (!reduce){ tm.classList.remove('tk'); void tm.offsetWidth; tm.classList.add('tk'); } twSync(cards[top]); return; }
   }
@@ -1847,18 +1871,17 @@ function cardsOff(){ cards.forEach(el => clip(el, HIDE.l, false)); cardOn = fals
 let holdTimer = null;
 let sceneT0 = 0, cardOn = false, burst = 0, tap = 0, pal = 0, lines = 0, lastT = 0, hold = false;
 const p2 = n => (n < 10 ? '0' : '') + n, WD = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-let lastSec = -1, lastMin = -1, lastHour = -1, glassMin = -1, glassDirty = true;
+let lastSec = -1, lastMin = -1, lastHour = -1, glassDirty = true;
 function tickClock(){
   const d = new Date(), s = d.getSeconds(); if (s === lastSec) return;
   lastSec = s; const m = d.getMinutes(), h = d.getHours();
   // 0秒の長い音のときはカードを出さず、1〜6秒に毎秒1枚ずつ。7秒になった瞬間に映像へ戻り、次の1秒まで映像
-  if (m !== glassMin){ glassMin = m; glassDirty = true; }
-  if (running && !hold && !away && !clipQuiet() && clockMode !== 'glass'){
+  if (running && !hold && !away && !clipQuiet()){
     const k = s % 10;
     if (k >= 1 && k <= 6){
       cardIn(p2(h) + ' ' + p2(m) + ' ' + p2(s));
       // 1枚目が画面を覆いきったら、裏の映像を止める（自分で一時停止している場合はそのまま）
-      if (!cardHold && !holdTimer) holdTimer = setTimeout(() => { holdTimer = null; if (cardOn && clockMode !== 'cutout') setHold(true); }, reduce ? 0 : 600);
+      if (!cardHold && !holdTimer) holdTimer = setTimeout(() => { holdTimer = null; if (cardOn && clockMode === 'panel') setHold(true); }, reduce ? 0 : 600);
     } else if (k === 7) cardOut();
   }
   if (!reduce && glitchOn) burst = Math.max(burst, s % 10 === 0 ? 1.1 : .8);
