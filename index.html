@@ -22,7 +22,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Urbanist:wght@600;800;900&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=LINE+Seed+JP:wght@400;700;800&family=Archivo:wght@600;800;900&family=Finger+Paint&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Urbanist:wght@600;800;900&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=LINE+Seed+JP:wght@400;700;800&family=Archivo:wght@600;800;900&family=Nunito:wght@900&display=swap">
 <style>
 /* Layout: one manga panel filling the phone screen, showing the camera through a filter; every 10 seconds a flat time card wipes across. All controls live in a sheet that slides up from the bottom. Single black-and-white look by design. */
 :root{
@@ -99,8 +99,8 @@ body.k-knock .time{white-space:pre-line; font-size:min(47vw,30vh); line-height:.
 body.k-knock .sub{display:none}
 /* ガラス：抜き文字とまったく同じ札（書体・大きさ・出入り・脈打ち）を見えないまま動かし、その形を WebGL がガラスとして描く */
 body.k-glass .card{opacity:0 !important}
-/* 曇りガラスは指で書いた字（Finger Paint）。毎秒の脈打ちはやめ、息がかかったように一瞬曇る明滅にする（WebGL 側） */
-body.k-glass .time{font-family:'Finger Paint',var(--font-t); font-weight:400; letter-spacing:0; line-height:.98; font-size:min(40vw,26vh)}
+/* 曇りガラスは指で書いた字（Nunito 900：Futura 寄りの骨格で、線端が丸い）。毎秒の脈打ちはやめ、息がかかったように一瞬曇る明滅にする（WebGL 側） */
+body.k-glass .time{font-family:'Nunito',var(--font-t); font-weight:900; letter-spacing:0; line-height:.9; font-size:min(44vw,28vh)}
 body.k-glass .time.tk{animation:none}
 .time.tk{animation:tk .22s cubic-bezier(.2,.9,.2,1)}
 @keyframes tk{from{transform:scale(.965)}to{transform:none}}
