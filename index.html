@@ -1737,7 +1737,7 @@ function loadDrops(){
     gl.activeTexture(gl.TEXTURE0); dtReady = true; };
   if (dtImg && dtImg.complete && dtImg.naturalWidth){ up(); return; }
   if (dtImg) return;
-  dtImg = new Image(); dtImg.onload = () => { if (gl && dtTex) up(); }; dtImg.src = 'glass-drops.jpg';
+  dtImg = new Image(); dtImg.onload = () => { if (gl && dtTex) up(); }; dtImg.src = 'glass-drops.webp';
 }
 let gl = null, PH = null, PV = null, PF = null, tex = null, tA = null, tB = null, W = 0, H = 0, dpr = 1, srcW = 640, srcH = 360, ww = 0, wh = 0;
 function mkProg(fs, names){
