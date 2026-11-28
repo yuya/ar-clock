@@ -1479,7 +1479,12 @@ void main(){
   vec3 fg=sc*.16;
   for(int i=0;i<8;i++){ float a=float(i)*.785398; vec2 d=vec2(cos(a),sin(a)); fg+=texture2D(u_scene,uv+d*r1).rgb*.07+texture2D(u_scene,uv+d.yx*r2).rgb*.035; }
   float l=dot(fg,vec3(.299,.587,.114));
-  fg=mix(fg,vec3(l)*vec3(.9,.95,1.04)+.1,.55);   // 曇り：ぼけて、色が抜けて、少し青白く
+  // 曇りの明るさは、奥の景色の大まかな明るさと逆に振る（暗い景色なら白く、明るい景色なら暗く曇らせて、拭いた字との差を作る）
+  vec2 r3=vec2(70.*k)/u_res; float lb=0.;
+  for(int i=0;i<6;i++){ float a=float(i)*1.0472+.3; lb+=dot(texture2D(u_scene,uv+vec2(cos(a),sin(a))*r3).rgb,vec3(.299,.587,.114)); }
+  lb=(lb/6.+l)*.5;
+  float tgt=mix(.86,.2,smoothstep(.3,.7,lb));
+  fg=mix(fg,vec3(tgt)*vec3(.94,.97,1.03),.72);   // 曇り：ぼけて、色が抜けて、少し青み
   // 水滴：大小2種類。粒の中は奥の景色が逆さまに小さく映り、縁は暗く、左上に光
   for(int s=0;s<2;s++){
     float cell=(s==0?28.:9.)*k, dens=(s==0?.34:.55);
@@ -1831,41 +1836,81 @@ function glassA(){
   if (cardOn){ if (gOnAt < 0 || gOffAt >= 0){ gOnAt = now; gOffAt = -1; } gaV = Math.min(1, gaV + dt / 500); }
   else if (gaV > 0 && gOffAt < 0) gOffAt = now;
   const t = gOnAt < 0 ? 0 : (now - gOnAt) / 1000;
-  const ct = cardOn ? .72 + .28 * Math.cos(t / 3 * 2 * Math.PI) : 1;   // 曇りかけ（いちばん曇っても半分ほど）
+  const ct = 1;   // 明滅はやめた（代わりに字を書く動き）
   let sw = 0;
   if (!cardOn && gOffAt >= 0){ sw = Math.min(1.3, (now - gOffAt) / 1000 * 1.3); if (sw >= 1.3){ gaV = 0; gOnAt = -1; gOffAt = -1; sw = 0; } }
   return { ga:gaV * gaV * (3 - 2 * gaV), ct, sw };
 }
+// 手書き：数字ごとの書き順（字の枠を 0〜1 として、上から下へ y が増える）。指でなぞるように、筆が通ったところだけ字が現れる
+const ELL = (cx, cy, rx, ry, a0, dir) => { const o = []; for (let i = 0; i <= 24; i++){ const a = a0 + dir * i / 24 * Math.PI * 2; o.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]); } return o; };
+const STROKES = {
+  '0':[ELL(.5, .5, .34, .5, -Math.PI / 2, -1)],
+  '1':[[[.3, .22], [.56, 0], [.56, 1]]],
+  '2':[[[.16, .26], [.3, .06], [.52, 0], [.76, .1], [.8, .32], [.62, .56], [.16, 1], [.88, 1]]],
+  '3':[[[.18, .12], [.45, 0], [.72, .08], [.76, .28], [.52, .46], [.4, .47], [.6, .5], [.82, .68], [.74, .92], [.48, 1], [.16, .9]]],
+  '4':[[[.64, 0], [.1, .68], [.92, .68]], [[.64, .28], [.64, 1]]],
+  '5':[[[.8, 0], [.28, 0], [.22, .46], [.5, .38], [.78, .5], [.84, .74], [.66, .96], [.38, 1], [.14, .88]]],
+  '6':[[[.76, .04], [.48, .08], [.24, .36], [.18, .7], [.34, .96], [.62, .98], [.82, .76], [.72, .52], [.46, .48], [.22, .64]]],
+  '7':[[[.12, 0], [.88, 0], [.44, 1]]],
+  '8':[[[.74, .14], [.5, 0], [.26, .12], [.3, .34], [.7, .58], [.8, .8], [.5, 1], [.2, .8], [.3, .58], [.7, .34], [.74, .14]]],
+  '9':[[[.78, .36], [.5, .5], [.22, .34], [.34, .04], [.66, .02], [.8, .26], [.72, .7], [.6, 1]]],
+};
+const WRITE_MS = 380, WRITE_GAP = 170;   // 1字を書くのにかかる時間と、次の字を書き始めるまでの間
+let gw = [], gwOn = false;   // 位置ごとの {ch, t0}
+const gmScr = document.createElement('canvas'); gmScr.width = gmScr.height = 1024;
+function drawStrokes(c, ch, x, y, w, h, p, lw){
+  const st = STROKES[ch]; if (!st) return;
+  const segs = []; let tot = 0;
+  st.forEach(pts => { for (let i = 1; i < pts.length; i++){ const ax = x + pts[i - 1][0] * w, ay = y + pts[i - 1][1] * h, bx = x + pts[i][0] * w, by = y + pts[i][1] * h, L = Math.hypot(bx - ax, by - ay); segs.push({ ax, ay, bx, by, L, start:i === 1 }); tot += L; } });
+  let left = tot * p;
+  c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = '#fff'; c.beginPath();
+  for (const s of segs){ if (left <= 0) break; if (s.start) c.moveTo(s.ax, s.ay); const k = Math.min(1, left / s.L); c.lineTo(s.ax + (s.bx - s.ax) * k, s.ay + (s.by - s.ay) * k); left -= s.L; }
+  c.stroke();
+}
 function drawGlassMask(){
-  if (!cardOn && !glassDirty) return;   // 札が引っ込む動きは写さない（拭いた跡はそのまま、曇りが戻るだけ）
-  const parts = [];
-  if (!document.body.classList.contains('coaching')) cards.forEach(el => {
-    const cs = getComputedStyle(el), cp = cs.clipPath || cs.webkitClipPath || '';
-    const m = cp.match(/inset\(([^)]*)\)/); if (!m) return;
-    const tk = m[1].trim().split(/\s+/), [t, r = t, bt = t, l = r] = tk, px = (x, tot) => parseFloat(x) * (x.endsWith('%') ? tot / 100 : 1);
-    const ct = px(t, H), cr = px(r, W), cb = px(bt, H), cl = px(l, W);
-    if (W - cl - cr < 1 || H - ct - cb < 1) return;
-    const tm = el.querySelector('.ctime'), ts = getComputedStyle(tm), rc = tm.getBoundingClientRect();
-    const mt = ts.transform && ts.transform !== 'none' ? ts.transform.match(/matrix\(([^,]+)/) : null, sc = mt ? parseFloat(mt[1]) : 1;
-    parts.push({ cl, ct, cw:W - cl - cr, ch:H - ct - cb, text:tm.textContent, fs:parseFloat(ts.fontSize), lh:parseFloat(ts.lineHeight) || parseFloat(ts.fontSize) * .84,
-      font:ts.fontWeight + ' ' + ts.fontSize + ' ' + ts.fontFamily, ls:ts.letterSpacing, cx:rc.left + rc.width / 2, cy:rc.top + rc.height / 2, sc, z:+el.style.zIndex || 0 });
-  });
-  parts.sort((a, b) => a.z - b.z);
-  const key = W + 'x' + H + JSON.stringify(parts.map(p => [Math.round(p.cl), Math.round(p.ct), Math.round(p.cw), Math.round(p.ch), p.text, p.font, p.sc.toFixed(3), Math.round(p.cx), Math.round(p.cy)]));
+  if (!cardOn && !glassDirty){ gwOn = false; return; }   // 札が引っ込んだあとは描き直さない（曇りが晴れるだけ）
+  const now = performance.now();
+  // いちばん上の札から、文字の位置と書体を写す（札そのものは見えない）
+  let top = null; cards.forEach(el => { if (!top || (+el.style.zIndex || 0) > (+top.style.zIndex || 0)) top = el; });
+  const coach = document.body.classList.contains('coaching');
+  const tm = top && top.querySelector('.ctime'), text = tm && !coach && cardOn ? tm.textContent : '';
+  const lines = text ? text.split('\n') : [];
+  const ts = tm ? getComputedStyle(tm) : null, rc = tm ? tm.getBoundingClientRect() : null;
+  // 札が出た瞬間に、1字ずつ順に書き始める。以後は変わった字だけ書き直す
+  if (cardOn && !gwOn){ gwOn = true; gw = []; }
+  let idx = 0, order = 0;
+  lines.forEach(ln => [...ln].forEach(ch => { const g = gw[idx]; if (!g) gw[idx] = { ch, t0:now + order * WRITE_GAP }; else if (g.ch !== ch) gw[idx] = { ch, t0:now }; idx++; order++; }));
+  gw.length = idx;
+  const prog = gw.map(g => Math.max(0, Math.min(1, (now - g.t0) / WRITE_MS)));
+  const key = W + 'x' + H + text + (ts ? ts.fontFamily + ts.fontSize : '') + (rc ? Math.round(rc.left) + ',' + Math.round(rc.top) : '') + prog.map(p => p.toFixed(2)).join(',');
   if (key === gmKey && !glassDirty) return;
   gmKey = key; glassDirty = false;
-  const c = gmCv.getContext('2d');
+  const c = gmCv.getContext('2d'), sc = gmScr.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 1024, 1024);
-  parts.forEach(p => {
-    c.setTransform(1024 / W, 0, 0, 1024 / H, 0, 0);
-    c.save(); c.beginPath(); c.rect(p.cl, p.ct, p.cw, p.ch); c.clip();
-    c.translate(p.cx, p.cy); c.scale(p.sc, p.sc);
-    c.font = p.font; if ('letterSpacing' in c) c.letterSpacing = p.ls === 'normal' ? '0px' : p.ls;
-    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff';
-    const lines = p.text.split('\n'), y0 = -(lines.length - 1) * p.lh / 2;
-    lines.forEach((ln, i) => c.fillText(ln, 0, y0 + i * p.lh));
-    c.restore();
-  });
+  if (lines.length && ts){
+    const fs = parseFloat(ts.fontSize), lh = parseFloat(ts.lineHeight) || fs * .98, font = ts.fontWeight + ' ' + ts.fontSize + ' ' + ts.fontFamily;
+    const cx = rc.left + rc.width / 2, cy = rc.top + rc.height / 2, y0 = cy - (lines.length - 1) * lh / 2;
+    sc.setTransform(1024 / W, 0, 0, 1024 / H, 0, 0); sc.font = font; sc.textBaseline = 'middle'; sc.textAlign = 'left';
+    const mz = sc.measureText('0'), asc = mz.actualBoundingBoxAscent || fs * .36, dsc = mz.actualBoundingBoxDescent || fs * .36;
+    let i = 0;
+    lines.forEach((ln, li) => {
+      const ws = [...ln].map(ch => sc.measureText(ch).width), lw = ws.reduce((a, b) => a + b, 0), y = y0 + li * lh;
+      let x = cx - lw / 2;
+      [...ln].forEach((ch, k) => {
+        const p = prog[i++], w = ws[k];
+        if (p > 0){
+          sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, 1024, 1024);
+          sc.setTransform(1024 / W, 0, 0, 1024 / H, 0, 0);
+          if (p < 1) drawStrokes(sc, ch, x + w * .1, y - asc, w * .8, asc + dsc, p, w * .46);
+          else { sc.fillStyle = '#fff'; sc.fillRect(x - 2, y - asc - 4, w + 4, asc + dsc + 8); }
+          sc.globalCompositeOperation = 'destination-in'; sc.fillStyle = '#fff'; sc.fillText(ch, x, y);
+          sc.globalCompositeOperation = 'source-over';
+          c.drawImage(gmScr, 0, 0);
+        }
+        x += w;
+      });
+    });
+  }
   gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gmCv); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
   gl.generateMipmap(gl.TEXTURE_2D); gl.activeTexture(gl.TEXTURE0);
@@ -2179,6 +2224,7 @@ window.ARClock = {
     const el = $(id); if (el) el.click(); return schema();
   },
   wake(){ wake(); },
+  gmask(){ return gmCv.toDataURL(); },
   debug(){ const n = performance.now(); return { src:JSON.stringify(src), cardOn, rc:!!rc, clipHoldOn, quiet:clipQuiet(), sup:Math.round(clipSupUntil - n), unlock:Math.round(n - (A.unlockedAt || -1e9)), clipUrl:!!clipUrl, clipDown:!!clipDown, away:!!away }; },
   slide(id, v){ const el = $(id); if (el){ el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); } },
   // 自動確認用：最初の画面を「サンプル映像」で通す
