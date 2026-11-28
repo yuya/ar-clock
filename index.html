@@ -1465,7 +1465,7 @@ void main(){
 // ガラス（結露したガラス）：時計を出す6秒は、画面全体が曇って水滴がつき、時刻の形だけ指で拭いたように澄む。
 // 拭いた字は3秒周期で曇りかけては澄む（2周）。映像だけの4秒に移るとき、曇りが上からサーッと晴れていく
 const FS_G = PREC + `
-uniform sampler2D u_scene,u_gm,u_dt; uniform vec2 u_res,u_dts; uniform float u_ga,u_ct,u_sw,u_dton;
+uniform sampler2D u_scene,u_gm,u_dt; uniform vec2 u_res,u_dts,u_dtc; uniform float u_ga,u_ct,u_sw,u_dton;
 vec2 h2(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
   float a=h2(i).x, b=h2(i+vec2(1.,0.)).x, c=h2(i+vec2(0.,1.)).x, d=h2(i+vec2(1.,1.)).x;
@@ -1496,7 +1496,7 @@ void main(){
   fg=mix(fg,vec3(tgt)*vec3(.94,.97,1.03),.72);   // 曇り：ぼけて、色が抜けて、少し青み
   // 水滴：本物のガラスの水滴写真（Pexels・高域だけ取り出した明暗）を画面いっぱいに敷き、粒の凹凸で奥の景色を屈折させ、明暗を重ねる
   if(u_dton>.5){
-    vec2 tuv=(uv-.5)*u_dts+.5, e=vec2(1.5/806.,1.5/1717.);
+    vec2 tuv=(uv-.5)*u_dts+u_dtc, e=vec2(1.5/3240.,1.5/2160.);
     float h=texture2D(u_dt,tuv).r*2.-1.;
     float hx=texture2D(u_dt,tuv+vec2(e.x,0.)).r-texture2D(u_dt,tuv-vec2(e.x,0.)).r, hy=texture2D(u_dt,tuv+vec2(0.,e.y)).r-texture2D(u_dt,tuv-vec2(0.,e.y)).r;
     float dm=smoothstep(.06,.45,abs(h));
@@ -1767,8 +1767,8 @@ function initGL(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     tex = mkTex(gl.LINEAR); tA = mkTarget(gl.NEAREST); tB = mkTarget(gl.LINEAR);
-    PG = mkProg(FS_G, ['u_scene', 'u_gm', 'u_dt', 'u_res', 'u_dts', 'u_ga', 'u_ct', 'u_sw', 'u_dton']);
-    dtTex = gl.createTexture(); dtReady = false; loadDrops(); tS = mkTarget(gl.LINEAR); sw = sh = 0;
+    PG = mkProg(FS_G, ['u_scene', 'u_gm', 'u_dt', 'u_res', 'u_dts', 'u_dtc', 'u_ga', 'u_ct', 'u_sw', 'u_dton']);
+    dtTex = gl.createTexture(); dtReady = false; if (dtImg) loadDrops(); tS = mkTarget(gl.LINEAR); sw = sh = 0;
     gmTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, gmTex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
@@ -1837,8 +1837,11 @@ function render(now){
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.useProgram(PG.p);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex); gl.uniform1i(PG.u.u_gm, 2);
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.uniform1i(PG.u.u_scene, 3);
+    if (!dtImg) loadDrops();
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, dtTex); gl.uniform1i(PG.u.u_dt, 4); gl.uniform1f(PG.u.u_dton, dtReady ? 1 : 0);
-    { const sa = cv.width / cv.height, ta = 806 / 1717; gl.uniform2f(PG.u.u_dts, sa > ta ? 1 : sa / ta, sa > ta ? ta / sa : 1); }
+    { // 写真(3:2)を画面比率で切り抜く。縦画面は粒のはっきりした中央やや右、横画面は全体
+      const sa = cv.width / cv.height, ta = 3240 / 2160, wf = sa < ta ? sa / ta : 1, hf = sa < ta ? 1 : ta / sa;
+      gl.uniform2f(PG.u.u_dts, wf, hf); gl.uniform2f(PG.u.u_dtc, Math.min(Math.max(.6, wf / 2), 1 - wf / 2), .5); }
     gl.uniform2f(PG.u.u_res, cv.width, cv.height); { const g = glassA(); gl.uniform1f(PG.u.u_ga, g.ga); gl.uniform1f(PG.u.u_ct, g.ct); gl.uniform1f(PG.u.u_sw, g.sw); } gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.activeTexture(gl.TEXTURE0);
   }
