@@ -1461,6 +1461,9 @@ void main(){
 const FS_G = PREC + `
 uniform sampler2D u_scene,u_gm; uniform vec2 u_res; uniform float u_ga,u_ct,u_sw;
 vec2 h2(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }
+float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  float a=h2(i).x, b=h2(i+vec2(1.,0.)).x, c=h2(i+vec2(0.,1.)).x, d=h2(i+vec2(1.,1.)).x;
+  return mix(mix(a,b,f.x),mix(c,d,f.x),f.y); }
 vec4 drop(vec2 px,float cell,float dens){
   vec2 g=floor(px/cell), f=px/cell-g; float best=9.; vec2 bo=vec2(0.); float br=1.;
   for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
@@ -1501,8 +1504,9 @@ void main(){
   float c=smoothstep(.12,.88,m)*u_ct;   // 拭いた字：3秒周期で曇りかけては澄む
   float wet=clamp(b*(1.-smoothstep(.12,.88,m))*1.4,0.,1.);
   vec3 fog=mix(fg,sc*.94,c)-wet*.07;   // 拭いた跡の縁に水がたまって少し暗い（字が読みやすい）
-  float nz=h2(floor(gl_FragCoord.xy/(18.*k))).x;
-  float sweep=smoothstep(u_sw-.12,u_sw+.12,(1.-uv.y)*.85+nz*.15);   // 上から下へ、少しまだらに晴れていく
+  vec2 np=gl_FragCoord.xy/(90.*k);
+  float nz=vn(np)*.65+vn(np*2.3+7.1)*.35;   // なめらかなまだら（ブロック状にならないよう補間したノイズ）
+  float sweep=smoothstep(u_sw-.2,u_sw+.2,(1.-uv.y)*.78+nz*.22);   // 上から下へ、ゆるい境目でまだらに晴れていく
   float amt=u_ga*(u_sw>0.?sweep:1.);
   gl_FragColor=vec4(mix(sc,fog,amt),1.);
 }`;
