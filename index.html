@@ -2335,8 +2335,8 @@ function thumbStep(now){
   const isBase = !!b.closest('#segBase'); thumbT = true; thumbBase = isBase ? b.dataset.v : null; thumbLook = isBase ? null : b.dataset.v;
   try{
     render(now);
-    const sw = cv.width, sh = cv.height, cw = sw, ch = Math.min(sh, sw * .75);
-    thumbCtx.drawImage(cv, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, 200, 150);   // 上下を切って、横長に
+    const sw = cv.width, sh = cv.height, cw = Math.min(sw, sh * 4 / 3), ch = cw * .75;
+    thumbCtx.drawImage(cv, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, 200, 150);   // 画面の中央を 4:3 で切り抜く（伸び縮みさせない）
     b.style.backgroundImage = 'url(' + thumbCv.toDataURL('image/jpeg', .72) + ')';
   }catch(e){}
   thumbT = false; thumbBase = thumbLook = null; render(now);   // すぐ本来の映像に描き直す（画面には出ない）
