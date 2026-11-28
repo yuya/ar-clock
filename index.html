@@ -1463,9 +1463,9 @@ void main(){
   gl_FragColor=vec4(clamp(.5+(a-b)*12.,0.,1.),b,a,1.);
 }`;
 // ガラス（結露したガラス）：時計を出す6秒は、画面全体が曇って水滴がつき、時刻の形だけ指で拭いたように澄む。
-// 拭いた字は3秒周期で曇りかけては澄む（2周）。映像だけの4秒に移るとき、曇りが上からサーッと晴れていく
+// 映像だけの4秒に移るとき、本物の曇りが取れるように晴れる：中央あたりから、まだらに広がりながら全体が薄れ、水滴は少し遅れて小さい粒から消える
 const FS_G = PREC + `
-uniform sampler2D u_scene,u_gm,u_dt; uniform vec2 u_res,u_dts,u_dtc; uniform float u_ga,u_ct,u_sw,u_dton;
+uniform sampler2D u_scene,u_gm,u_dt; uniform vec2 u_res,u_dts,u_dtc; uniform float u_ga,u_ct,u_sw,u_dton; uniform vec3 u_sc;
 vec2 h2(vec2 p){ p=vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
   float a=h2(i).x, b=h2(i+vec2(1.,0.)).x, c=h2(i+vec2(0.,1.)).x, d=h2(i+vec2(1.,1.)).x;
@@ -1484,6 +1484,16 @@ void main(){
   vec3 sc=texture2D(u_scene,uv).rgb;
   if(u_ga<=.001){gl_FragColor=vec4(sc,1.);return;}
   float k=u_res.y/900.;
+  // 晴れ方：中心（毎回少しずれる）からの距離と、大きなまだらで「晴れる順番」T を決め、進み p に応じて、ゆるい幅で薄れる
+  float q=0., qd=0.;
+  if(u_sw>0.){
+    vec2 a=vec2(u_res.x/u_res.y,1.), d=(uv-u_sc.xy)*a;
+    vec2 np=uv*a*2.2+u_sc.z;
+    float n=vn(np)*.5+vn(np*2.1+3.7)*.3+vn(np*4.7+9.1)*.2;
+    float T=smoothstep(.15,.85,length(d)*.7+n*.6);
+    q=clamp((u_sw*1.6-T)/.5,0.,1.); q=q*q*(3.-2.*q);
+    qd=clamp((u_sw*1.6-T-.25)/.35,0.,1.);
+  }
   vec2 r1=vec2(18.*k)/u_res, r2=r1*.5;
   vec3 fg=sc*.16;
   for(int i=0;i<8;i++){ float a=float(i)*.785398; vec2 d=vec2(cos(a),sin(a)); fg+=texture2D(u_scene,uv+d*r1).rgb*.07+texture2D(u_scene,uv+d.yx*r2).rgb*.035; }
@@ -1494,24 +1504,21 @@ void main(){
   lb=(lb/6.+l)*.5;
   float tgt=mix(.86,.2,smoothstep(.3,.7,lb));
   fg=mix(fg,vec3(tgt)*vec3(.94,.97,1.03),.72);   // 曇り：ぼけて、色が抜けて、少し青み
+  fg=mix(fg,sc,q);   // 晴れたところは、ぼけも色抜けも取れる
   // 水滴：本物のガラスの水滴写真（Pexels・高域だけ取り出した明暗）を画面いっぱいに敷き、粒の凹凸で奥の景色を屈折させ、明暗を重ねる
   if(u_dton>.5){
     vec2 tuv=(uv-.5)*u_dts+u_dtc, e=vec2(1.5/3240.,1.5/2160.);
     float h=texture2D(u_dt,tuv).r*2.-1.;
     float hx=texture2D(u_dt,tuv+vec2(e.x,0.)).r-texture2D(u_dt,tuv-vec2(e.x,0.)).r, hy=texture2D(u_dt,tuv+vec2(0.,e.y)).r-texture2D(u_dt,tuv-vec2(0.,e.y)).r;
-    float dm=smoothstep(.06,.45,abs(h));
+    float dm=smoothstep(.06+qd*.35,.45+qd*.15,abs(h))*(1.-qd);   // 晴れるときは小さい粒から消える
     vec3 rf=texture2D(u_scene,uv-vec2(hx,hy)*.06).rgb;   // 粒は小さなレンズ：曇りを通さず、少しゆがんだ景色が見える
-    fg=mix(fg,rf,dm*.6)+h*.12;
+    fg=mix(fg,rf,dm*.6)+h*.12*(1.-qd);
   }
   float m=texture2D(u_gm,uv,1.).a, b=texture2D(u_gm,uv,4.).a;
-  float c=smoothstep(.12,.88,m)*u_ct;   // 拭いた字：3秒周期で曇りかけては澄む
+  float c=smoothstep(.12,.88,m)*u_ct*(1.-q);   // 拭いた字：3秒周期で曇りかけては澄む
   float wet=clamp(b*(1.-smoothstep(.12,.88,m))*1.4,0.,1.);
-  vec3 fog=mix(fg,sc*.94,c)-wet*.07;   // 拭いた跡の縁に水がたまって少し暗い（字が読みやすい）
-  vec2 np=gl_FragCoord.xy/(90.*k);
-  float nz=vn(np)*.65+vn(np*2.3+7.1)*.35;   // なめらかなまだら（ブロック状にならないよう補間したノイズ）
-  float sweep=smoothstep(u_sw-.2,u_sw+.2,(1.-uv.y)*.78+nz*.22);   // 上から下へ、ゆるい境目でまだらに晴れていく
-  float amt=u_ga*(u_sw>0.?sweep:1.);
-  gl_FragColor=vec4(mix(sc,fog,amt),1.);
+  vec3 fog=mix(fg,sc*.94,c)-wet*.07*(1.-q);   // 拭いた跡の縁に水がたまって少し暗い（字が読みやすい）
+  gl_FragColor=vec4(mix(sc,fog,u_ga),1.);
 }`;
 const FS_F = PREC + COVER + `
 uniform sampler2D u_fx; uniform vec2 u_res;
@@ -1767,7 +1774,7 @@ function initGL(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     tex = mkTex(gl.LINEAR); tA = mkTarget(gl.NEAREST); tB = mkTarget(gl.LINEAR);
-    PG = mkProg(FS_G, ['u_scene', 'u_gm', 'u_dt', 'u_res', 'u_dts', 'u_dtc', 'u_ga', 'u_ct', 'u_sw', 'u_dton']);
+    PG = mkProg(FS_G, ['u_scene', 'u_gm', 'u_dt', 'u_res', 'u_dts', 'u_dtc', 'u_ga', 'u_ct', 'u_sw', 'u_dton', 'u_sc']);
     dtTex = gl.createTexture(); dtReady = false; if (dtImg) loadDrops(); tS = mkTarget(gl.LINEAR); sw = sh = 0;
     gmTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, gmTex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -1842,7 +1849,7 @@ function render(now){
     { // 写真(3:2)を画面比率で切り抜く。縦画面は粒のはっきりした中央やや右、横画面は全体
       const sa = cv.width / cv.height, ta = 3240 / 2160, wf = sa < ta ? sa / ta : 1, hf = sa < ta ? 1 : ta / sa;
       gl.uniform2f(PG.u.u_dts, wf, hf); gl.uniform2f(PG.u.u_dtc, Math.min(Math.max(.6, wf / 2), 1 - wf / 2), .5); }
-    gl.uniform2f(PG.u.u_res, cv.width, cv.height); { const g = glassA(); gl.uniform1f(PG.u.u_ga, g.ga); gl.uniform1f(PG.u.u_ct, g.ct); gl.uniform1f(PG.u.u_sw, g.sw); } gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.uniform2f(PG.u.u_res, cv.width, cv.height); { const g = glassA(); gl.uniform1f(PG.u.u_ga, g.ga); gl.uniform1f(PG.u.u_ct, g.ct); gl.uniform1f(PG.u.u_sw, g.sw); gl.uniform3f(PG.u.u_sc, gSeed[0], gSeed[1], gSeed[2]); } gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.activeTexture(gl.TEXTURE0);
   }
 }
@@ -1854,15 +1861,16 @@ let gmKey = '';
 // ・時計を出すと0.5秒で曇る（ga）
 // ・拭いた字は3秒周期で曇りかけては澄む（ct：0秒・3秒で澄み、1.5秒・4.5秒でいちばん曇る）
 // ・映像だけになる瞬間、2周目が澄みきるのにつなげて、画面全体が上から約1秒で晴れていく（sw）
-let gaV = 0, gaT = -1, gOnAt = -1, gOffAt = -1;
+let gTest = null, gaV = 0, gaT = -1, gOnAt = -1, gOffAt = -1, gSeed = [.5, .5, 0];
 function glassA(){
   const now = performance.now(), dt = gaT < 0 ? 0 : Math.min(100, now - gaT); gaT = now;
   if (cardOn){ if (gOnAt < 0 || gOffAt >= 0){ gOnAt = now; gOffAt = -1; } gaV = Math.min(1, gaV + dt / 500); }
-  else if (gaV > 0 && gOffAt < 0) gOffAt = now;
+  else if (gaV > 0 && gOffAt < 0){ gOffAt = now; gSeed = [.38 + Math.random() * .24, .38 + Math.random() * .24, Math.random() * 50]; }   // 晴れ始めの中心とまだらを毎回変える
   const t = gOnAt < 0 ? 0 : (now - gOnAt) / 1000;
   const ct = 1;   // 明滅はやめた（代わりに字を書く動き）
   let sw = 0;
-  if (!cardOn && gOffAt >= 0){ sw = Math.min(1.3, (now - gOffAt) / 1000 * 1.3); if (sw >= 1.3){ gaV = 0; gOnAt = -1; gOffAt = -1; sw = 0; } }
+  if (!cardOn && gOffAt >= 0){ sw = Math.max(.001, Math.min(1, (now - gOffAt) / 2200)); if (sw >= 1){ gaV = 0; gOnAt = -1; gOffAt = -1; sw = 0; } }
+  if (gTest !== null) return { ga:1, ct, sw:gTest };
   return { ga:gaV * gaV * (3 - 2 * gaV), ct, sw };
 }
 // 手書き：数字ごとの書き順（字の枠を 0〜1 として、上から下へ y が増える）。指でなぞるように、筆が通ったところだけ字が現れる
@@ -2249,6 +2257,7 @@ window.ARClock = {
   },
   wake(){ wake(); },
   gmask(){ return gmCv.toDataURL(); },
+  glassTest(v){ gTest = v; },   // 確認用：晴れる進み具合を固定する（null で解除）
   debug(){ const n = performance.now(); return { src:JSON.stringify(src), cardOn, rc:!!rc, clipHoldOn, quiet:clipQuiet(), sup:Math.round(clipSupUntil - n), unlock:Math.round(n - (A.unlockedAt || -1e9)), clipUrl:!!clipUrl, clipDown:!!clipDown, away:!!away }; },
   slide(id, v){ const el = $(id); if (el){ el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); } },
   // 自動確認用：最初の画面を「サンプル映像」で通す
