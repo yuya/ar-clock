@@ -1496,7 +1496,7 @@ void main(){
   fg=mix(fg,vec3(tgt)*vec3(.94,.97,1.03),.72);   // 曇り：ぼけて、色が抜けて、少し青み
   // 水滴：本物のガラスの水滴写真（Pexels・高域だけ取り出した明暗）を画面いっぱいに敷き、粒の凹凸で奥の景色を屈折させ、明暗を重ねる
   if(u_dton>.5){
-    vec2 tuv=(uv-.5)*u_dts+.5, e=vec2(1.5/1067.,1.5/1600.);
+    vec2 tuv=(uv-.5)*u_dts+.5, e=vec2(1.5/806.,1.5/1717.);
     float h=texture2D(u_dt,tuv).r*2.-1.;
     float hx=texture2D(u_dt,tuv+vec2(e.x,0.)).r-texture2D(u_dt,tuv-vec2(e.x,0.)).r, hy=texture2D(u_dt,tuv+vec2(0.,e.y)).r-texture2D(u_dt,tuv-vec2(0.,e.y)).r;
     float dm=smoothstep(.06,.45,abs(h));
@@ -1838,7 +1838,7 @@ function render(now){
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, gmTex); gl.uniform1i(PG.u.u_gm, 2);
     gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, tS.t); gl.uniform1i(PG.u.u_scene, 3);
     gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, dtTex); gl.uniform1i(PG.u.u_dt, 4); gl.uniform1f(PG.u.u_dton, dtReady ? 1 : 0);
-    { const sa = cv.width / cv.height, ta = 1067 / 1600; gl.uniform2f(PG.u.u_dts, sa > ta ? 1 : sa / ta, sa > ta ? ta / sa : 1); }
+    { const sa = cv.width / cv.height, ta = 806 / 1717; gl.uniform2f(PG.u.u_dts, sa > ta ? 1 : sa / ta, sa > ta ? ta / sa : 1); }
     gl.uniform2f(PG.u.u_res, cv.width, cv.height); { const g = glassA(); gl.uniform1f(PG.u.u_ga, g.ga); gl.uniform1f(PG.u.u_ct, g.ct); gl.uniform1f(PG.u.u_sw, g.sw); } gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.activeTexture(gl.TEXTURE0);
   }
